@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Document Enterprise V5.0 (GitHub)</title>
-    <!-- Fonts & CSS -->
+    <title>E-Document Enterprise V5.1 (GitHub Full)</title>
+    <!-- CSS & Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -12,148 +12,197 @@
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
     
     <style>
-        body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Prompt', sans-serif; background-color: #f1f5f9; -webkit-tap-highlight-color: transparent; }
         .active-nav { background-color: #3b82f6 !important; color: white !important; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
-        .sig-trigger-box { position: relative; width: 100%; height: 160px; border: 2px dashed #cbd5e1; border-radius: 16px; background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-        .sig-trigger-box:hover { border-color: #3b82f6; background: #f1f5f9; }
+        .sig-trigger-box { position: relative; width: 100%; height: 160px; border: 2px dashed #cbd5e1; border-radius: 16px; background: white; cursor: pointer; overflow: hidden; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .sig-trigger-box:hover { border-color: #3b82f6; background: #f8fafc; }
         #sig-preview-img { max-height: 90%; max-width: 90%; object-fit: contain; }
-        .app-modal { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 1rem; }
-        .app-modal.active { display: flex; }
-        .modal-content { background: white; width: 100%; max-width: 600px; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); overflow: hidden; display: flex; flex-direction: column; animation: modal-in 0.3s ease-out; }
-        @keyframes modal-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-        .sig-canvas-container { width: 100%; height: 320px; background: #fff; border-bottom: 1px solid #e2e8f0; }
+        #sig-modal, #withdraw-modal { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 1rem; }
+        .modal-content { background: white; width: 100%; max-width: 600px; border-radius: 28px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); overflow: hidden; display: flex; flex-direction: column; }
+        .sig-canvas-container { width: 100%; height: 380px; background: #fff; position: relative; touch-action: none; }
         canvas { width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
         .loader-spin { border-top-color: #3b82f6; animation: spin 0.8s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .hide { display: none !important; }
-        .transition-sidebar { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        #main-sidebar { transition: transform 0.3s ease-in-out; }
+        .page-btn { padding: 8px 12px; border-radius: 8px; transition: all 0.2s; }
     </style>
 </head>
 <body class="text-slate-800">
 
-    <!-- แก้ไข URL ตรงนี้: ใส่ Web App URL ที่ได้จากขั้นตอน Deployment -->
     <script>
+        // *** สำคัญ: วาง URL Web App ของคุณที่นี่ ***
         const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxmkVkx7Ut-f0pnEs6PEAJIa6mXV70gLu03P1NnTay5xPMEIkkON4HvODg8-Bovvbkc/exec";
     </script>
 
     <!-- Global Loading -->
-    <div id="loading" class="fixed inset-0 z-[10000] flex items-center justify-center bg-white/80 backdrop-blur-sm">
-        <div class="flex flex-col items-center bg-white p-8 rounded-3xl shadow-2xl">
-            <div class="loader-spin rounded-full border-4 border-slate-100 h-12 w-12 mb-4"></div>
-            <p id="loading-text" class="text-slate-600 font-semibold text-sm">กำลังเชื่อมต่อ Server...</p>
+    <div id="loading" class="fixed inset-0 z-[9999] flex items-center justify-center bg-white/90">
+        <div class="flex flex-col items-center">
+            <div class="loader-spin rounded-full border-4 border-slate-200 h-14 w-14 mb-4"></div>
+            <p id="loading-text" class="text-slate-500 font-medium text-sm">กำลังเชื่อมต่อ Server...</p>
         </div>
     </div>
 
-    <!-- Modals (Signatures / Withdraw) -->
-    <div id="sig-modal" class="app-modal">
+    <!-- Main Entry Signature Modal -->
+    <div id="sig-modal">
         <div class="modal-content">
             <div class="p-5 border-b flex justify-between items-center bg-slate-50">
-                <h3 class="font-bold text-slate-800">ลงลายมือชื่อยืนยัน</h3>
-                <button onclick="closeModal('sig-modal')" class="p-2 hover:bg-slate-200 rounded-full"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <div><h3 class="font-bold text-slate-700">ลงลายมือชื่อยืนยัน</h3><p class="text-[10px] text-slate-400">เซ็นชื่อภายในกรอบ</p></div>
+                <button onclick="closeModal('sig-modal')" class="p-2"><i data-lucide="x" class="text-slate-400"></i></button>
             </div>
             <div class="sig-canvas-container"><canvas id="sig-canvas-main"></canvas></div>
             <div class="p-5 bg-slate-50 flex gap-4">
-                <button onclick="mainSignaturePad.clear()" class="flex-1 py-4 text-red-500 font-bold border border-red-100 rounded-2xl">ล้าง</button>
-                <button onclick="confirmMainSignature()" class="flex-[2] py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-200">ยืนยัน</button>
+                <button onclick="mainSignaturePad.clear()" class="flex-1 py-4 text-red-500 font-bold border rounded-2xl">ล้าง</button>
+                <button onclick="saveSignatureFromModal()" class="flex-[2] py-4 bg-blue-600 text-white font-bold rounded-2xl">ยืนยันลายเซ็น</button>
             </div>
         </div>
     </div>
 
-    <div id="withdraw-modal" class="app-modal">
+    <!-- Withdrawal Modal -->
+    <div id="withdraw-modal">
         <div class="modal-content max-w-lg">
             <div class="p-6 border-b flex justify-between items-center bg-orange-50">
-                <h3 class="font-bold text-orange-800">บันทึกการเบิกเอกสาร</h3>
-                <button onclick="closeModal('withdraw-modal')" class="text-orange-400"><i data-lucide="x"></i></button>
+                <h3 class="font-bold text-orange-700">ยืนยันการเบิกเอกสาร</h3>
+                <button onclick="closeModal('withdraw-modal')" class="text-slate-400"><i data-lucide="x"></i></button>
             </div>
             <div class="p-6 space-y-4">
-                <input type="text" id="withdraw-name" placeholder="ชื่อผู้เบิกเอกสาร" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-orange-500 outline-none">
-                <div class="border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50 h-48 overflow-hidden">
-                    <canvas id="withdraw-canvas"></canvas>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 block mb-1">ชื่อผู้เบิกเอกสาร</label>
+                    <input type="text" id="withdraw-name" placeholder="ระบุชื่อ-นามสกุล" class="w-full p-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 focus:ring-orange-500">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 block mb-1">ลงลายมือชื่อผู้เบิก</label>
+                    <div class="border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50 h-48 overflow-hidden">
+                        <canvas id="withdraw-canvas"></canvas>
+                    </div>
                 </div>
             </div>
             <div class="p-6 bg-slate-50 flex gap-3">
-                <button onclick="closeModal('withdraw-modal')" class="flex-1 py-4 bg-white border rounded-2xl">ยกเลิก</button>
-                <button onclick="submitWithdraw()" class="flex-[2] py-4 bg-orange-600 text-white rounded-2xl font-bold">บันทึกการเบิก</button>
+                <button onclick="closeModal('withdraw-modal')" class="flex-1 py-3 bg-white border rounded-xl">ยกเลิก</button>
+                <button onclick="submitWithdraw()" class="flex-[2] py-3 bg-orange-600 text-white rounded-xl font-bold shadow-lg shadow-orange-200">ยืนยันบันทึกการเบิก</button>
             </div>
         </div>
     </div>
 
-    <!-- Main Layout -->
-    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-[40] hidden"></div>
+    <!-- Sidebar Overlay -->
+    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-[40] hidden md:hidden"></div>
+
     <div class="flex h-screen overflow-hidden">
-        <aside id="main-sidebar" class="fixed inset-y-0 left-0 z-[50] w-72 bg-white border-r md:relative md:translate-x-0 -translate-x-full flex flex-col shrink-0 transition-sidebar">
-            <div class="p-8 text-center border-b flex flex-col items-center">
-                <img id="side-logo" src="https://cdn-icons-png.flaticon.com/512/281/281760.png" class="w-16 h-16 mb-4">
-                <h1 id="side-title" class="font-bold text-slate-800 text-lg truncate w-full">E-Document</h1>
+        <!-- Sidebar -->
+        <aside id="main-sidebar" class="fixed inset-y-0 left-0 z-[50] w-64 bg-white border-r shadow-xl md:shadow-none md:relative md:translate-x-0 -translate-x-full flex flex-col shrink-0">
+            <div class="p-6 text-center border-b relative">
+                <button onclick="toggleSidebar()" class="md:hidden absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <img id="side-logo" src="https://cdn-icons-png.flaticon.com/512/281/281760.png" class="w-16 h-16 mx-auto mb-2 object-contain rounded-xl">
+                <h1 id="side-title" class="font-bold text-slate-700 truncate w-full">E-Document</h1>
             </div>
-            <nav class="flex-1 p-6 space-y-2 overflow-y-auto">
-                <button onclick="handleNavClick('dashboard')" class="nav-btn w-full flex items-center p-3.5 rounded-2xl text-slate-600 hover:bg-slate-50 transition-all" data-v="dashboard"><i data-lucide="layout-grid" class="w-5 h-5 mr-3"></i> แดชบอร์ด</button>
-                <button onclick="handleNavClick('in')" class="nav-btn w-full flex items-center p-3.5 rounded-2xl text-slate-600 hover:bg-slate-50 transition-all" data-v="in"><i data-lucide="file-plus-2" class="w-5 h-5 mr-3 text-emerald-500"></i> ลงรับ</button>
-                <button onclick="handleNavClick('out')" class="nav-btn w-full flex items-center p-3.5 rounded-2xl text-slate-600 hover:bg-slate-50 transition-all" data-v="out"><i data-lucide="file-up" class="w-5 h-5 mr-3 text-orange-500"></i> ส่งออก</button>
-                <button onclick="handleNavClick('list_all')" class="nav-btn w-full flex items-center p-3.5 rounded-2xl text-slate-600 hover:bg-slate-50 transition-all" data-v="list_all"><i data-lucide="files" class="w-5 h-5 mr-3 text-blue-500"></i> คลังเอกสาร</button>
-                <button onclick="handleNavClick('settings')" class="nav-btn w-full flex items-center p-3.5 rounded-2xl text-slate-600 hover:bg-slate-50 transition-all" data-v="settings"><i data-lucide="settings" class="w-5 h-5 mr-3"></i> ตั้งค่า</button>
+            <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+                <button onclick="handleNavClick('dashboard')" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-600 hover:bg-slate-50" data-v="dashboard"><i data-lucide="layout-grid" class="w-5 h-5 mr-3"></i> แดชบอร์ด</button>
+                <div class="text-[10px] font-bold text-slate-400 px-3 pt-4 pb-2 uppercase tracking-widest">ทำรายการ</div>
+                <button onclick="handleNavClick('in')" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-600 hover:bg-slate-50" data-v="in"><i data-lucide="file-plus-2" class="w-5 h-5 mr-3 text-green-500"></i> ลงทะเบียนรับ</button>
+                <button onclick="handleNavClick('out')" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-600 hover:bg-slate-50" data-v="out"><i data-lucide="file-up" class="w-5 h-5 mr-3 text-orange-500"></i> บันทึกการส่ง</button>
+                <div class="text-[10px] font-bold text-slate-400 px-3 pt-4 pb-2 uppercase tracking-widest">คลัง</div>
+                <button onclick="handleNavClick('list_all')" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-600 hover:bg-slate-50" data-v="list_all"><i data-lucide="files" class="w-5 h-5 mr-3"></i> เอกสารทั้งหมด</button>
+                <button onclick="handleNavClick('trash')" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-600 hover:bg-slate-50" data-v="trash"><i data-lucide="trash-2" class="w-5 h-5 mr-3 text-red-400"></i> รายการจำหน่าย</button>
+                <button onclick="handleNavClick('settings')" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-600 hover:bg-slate-50" data-v="settings"><i data-lucide="settings" class="w-5 h-5 mr-3"></i> ตั้งค่า</button>
             </nav>
         </aside>
 
+        <!-- Main Content -->
         <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
-            <header class="bg-white/80 backdrop-blur-md border-b px-6 py-4 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <button onclick="toggleSidebar()" class="md:hidden p-2"><i data-lucide="menu"></i></button>
-                    <span id="mob-title" class="font-bold text-slate-800 text-lg">E-Document</span>
+            <header class="bg-white border-b p-3 flex items-center justify-between sticky top-0 z-30">
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleSidebar()" class="p-2 text-slate-500 md:hidden"><i data-lucide="menu"></i></button>
+                    <span id="mob-title" class="font-bold text-blue-600 text-lg">E-Doc Enterprise</span>
                 </div>
-                <button onclick="refreshData()" class="p-2 text-slate-400 hover:text-blue-600"><i data-lucide="refresh-cw" class="w-5 h-5"></i></button>
+                <button onclick="refreshData()" class="p-2 text-slate-400 hover:text-blue-500"><i data-lucide="refresh-cw" class="w-5 h-5"></i></button>
             </header>
-            <div id="main-area" class="flex-1 overflow-y-auto p-4 md:p-10"></div>
+            <div id="main-area" class="flex-1 overflow-y-auto p-4 md:p-8"></div>
         </main>
     </div>
 
-    <!-- Templates (Dashboard / List / Form) -->
+    <!-- UI Templates -->
     <div id="tpl-store" class="hide">
+        <!-- List View with Stats -->
         <div id="tpl-list">
-            <div class="bg-white rounded-3xl shadow-sm border p-6 mb-6 flex justify-between items-center">
-                <h2 id="list-head" class="font-bold text-lg text-slate-800">รายการ</h2>
-                <div class="flex gap-2">
-                   <input type="text" id="filter-search" onkeyup="resetAndRender()" placeholder="ค้นหา..." class="px-4 py-2 bg-slate-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            <div id="stats-bar" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border-l-4 border-blue-500">
+                    <p class="text-slate-400 text-xs">รับเข้า (Inbound)</p>
+                    <h3 id="stat-in" class="text-2xl font-bold text-slate-700">0</h3>
+                </div>
+                <div class="bg-indigo-500 text-white p-5 rounded-2xl shadow-sm">
+                    <p class="text-white/70 text-xs">ส่งออก (Outbound)</p>
+                    <h3 id="stat-out" class="text-2xl font-bold">0</h3>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border-l-4 border-slate-400">
+                    <p class="text-slate-400 text-xs">จำหน่ายแล้ว (Trash)</p>
+                    <h3 id="stat-del" class="text-2xl font-bold text-slate-700">0</h3>
                 </div>
             </div>
-            <div class="bg-white rounded-3xl shadow-sm border overflow-hidden">
+            
+            <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
+                <div class="p-4 border-b flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                    <h2 id="list-head" class="font-bold text-slate-700 text-lg">รายการเอกสาร</h2>
+                    <div class="flex gap-2 w-full lg:w-auto">
+                        <select id="filter-year" onchange="resetAndRender()" class="px-3 py-2 bg-slate-50 border-none rounded-xl text-sm outline-none">
+                            <option value="all">ทุกปี พ.ศ.</option>
+                        </select>
+                        <input type="text" id="filter-search" onkeyup="resetAndRender()" placeholder="ค้นหา..." class="flex-1 lg:w-64 px-4 py-2 bg-slate-50 rounded-xl text-sm outline-none">
+                    </div>
+                </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead class="bg-slate-50 text-slate-400 text-[10px] uppercase font-bold tracking-widest border-b">
-                            <tr><th class="px-6 py-4">เลขที่</th><th class="px-6 py-4">เรื่อง</th><th class="px-6 py-4">ผู้ติดต่อ</th><th class="px-6 py-4 text-center">จัดการ</th></tr>
+                    <table class="w-full text-left border-collapse min-w-[600px]">
+                        <thead class="bg-slate-50 text-slate-400 text-[10px] uppercase font-bold">
+                            <tr><th class="p-4">เลขที่/วันที่</th><th class="p-4">เรื่อง</th><th class="p-4">ผู้ติดต่อ</th><th class="p-4 text-center">จัดการ</th></tr>
                         </thead>
                         <tbody id="list-table" class="divide-y text-sm"></tbody>
                     </table>
                 </div>
+                <div class="p-4 bg-slate-50 border-t flex justify-between items-center text-xs">
+                    <div id="pagination-info" class="text-slate-400"></div>
+                    <div id="page-numbers" class="flex gap-1"></div>
+                </div>
             </div>
         </div>
 
+        <!-- Entry Form View -->
         <div id="tpl-form">
-            <div class="max-w-2xl mx-auto bg-white p-8 md:p-12 rounded-[2.5rem] shadow-xl border">
-                <h2 id="form-title-text" class="text-xl font-bold mb-8 text-slate-800 border-b pb-4">แบบฟอร์มบันทึก</h2>
-                <form id="main-form" onsubmit="handleFormSubmit(event)" class="space-y-6">
+            <div class="max-w-2xl mx-auto bg-white rounded-3xl shadow-xl p-6 md:p-10 border">
+                <div class="flex items-center mb-8">
+                    <div id="form-icon-box" class="p-3 bg-blue-50 text-blue-600 rounded-xl mr-4"></div>
+                    <h2 id="form-title-text" class="text-xl font-bold text-slate-800"></h2>
+                </div>
+                <form id="main-form" onsubmit="handleFormSubmit(event)" class="space-y-5">
                     <div class="grid grid-cols-2 gap-4">
-                        <input type="text" id="inp-id" readonly class="p-4 bg-slate-50 rounded-2xl font-bold text-blue-600">
-                        <input type="date" id="inp-date" required class="p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
+                        <div><label class="text-[10px] font-bold text-slate-400 ml-1">เลขที่อ้างอิง</label><input type="text" id="inp-id" readonly class="w-full p-3 bg-slate-50 rounded-xl font-bold text-blue-600 outline-none"></div>
+                        <div><label class="text-[10px] font-bold text-slate-400 ml-1">วันที่เอกสาร</label><input type="date" id="inp-date" required class="w-full p-3 bg-slate-50 rounded-xl outline-none"></div>
                     </div>
-                    <select id="sel-subject" onchange="toggleOtherSubject(this.value)" required class="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="" disabled selected>เลือกหัวข้อ</option>
-                        <option value="เอกสารรายเดือน">เอกสารรายเดือน</option>
-                        <option value="OTHER">อื่นๆ</option>
-                    </select>
-                    <div id="other-subject-container" class="hide"><input type="text" id="inp-subject-other" placeholder="ระบุหัวข้อเอง" class="w-full p-4 border rounded-2xl"></div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 ml-1">ชื่อเรื่องเอกสาร</label>
+                        <select id="sel-subject" onchange="toggleOtherSubject(this.value)" required class="w-full p-3 bg-slate-50 rounded-xl outline-none mb-2">
+                            <option value="" disabled selected>--- เลือกหัวข้อ ---</option>
+                            <option value="เอกสารรายเดือน">เอกสารรายเดือน</option>
+                            <option value="เอกสารปิดงบ">เอกสารปิดงบ</option>
+                            <option value="OTHER">อื่นๆ (ระบุเอง)</option>
+                        </select>
+                        <input type="text" id="inp-subject-other" placeholder="ระบุหัวข้อที่ต้องการ..." class="w-full p-3 border rounded-xl hide">
+                    </div>
                     <div class="grid grid-cols-2 gap-4">
-                        <input type="text" id="inp-sender" placeholder="ผู้ส่ง" required class="p-4 bg-slate-50 rounded-2xl outline-none">
-                        <input type="text" id="inp-receiver" placeholder="ผู้รับ" required class="p-4 bg-slate-50 rounded-2xl outline-none">
+                        <input type="text" id="inp-sender" list="dept-list" placeholder="ผู้ส่ง/ลูกค้า" required class="w-full p-3 bg-slate-50 rounded-xl outline-none"><datalist id="dept-list"></datalist>
+                        <input type="text" id="inp-receiver" placeholder="ผู้รับ" required class="w-full p-3 bg-slate-50 rounded-xl outline-none">
+                    </div>
+                    <input type="email" id="inp-email" placeholder="อีเมลแจ้งเตือน (ถ้ามี)" class="w-full p-3 bg-slate-50 rounded-xl outline-none">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="p-2 border rounded-xl text-center"><label class="text-[10px] block text-slate-400">ไฟล์ (PDF)</label><input type="file" id="inp-file" class="text-[10px]"></div>
+                        <div class="p-2 border rounded-xl text-center"><label class="text-[10px] block text-slate-400">รูปถ่าย</label><input type="file" id="inp-photo" accept="image/*" onchange="processPhotoSelection(this)" class="text-[10px]"><div id="photo-preview-box" class="h-8 w-8 mx-auto mt-1 hide border rounded"></div></div>
                     </div>
                     <div onclick="openModal('sig-modal')" class="sig-trigger-box">
-                        <p id="sig-placeholder" class="text-slate-400 text-xs">แตะเพื่อลงลายมือชื่อ</p>
+                        <div id="sig-placeholder" class="text-center text-slate-300 text-xs">แตะเพื่อลงลายมือชื่อ</div>
                         <img id="sig-preview-img" class="hide">
                     </div>
                     <input type="hidden" id="inp-sig-data">
-                    <div class="flex gap-4">
+                    <div class="flex gap-3 pt-4">
                         <button type="button" onclick="switchView('dashboard')" class="flex-1 py-4 bg-slate-100 rounded-2xl">ยกเลิก</button>
-                        <button type="submit" class="flex-[2] py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-200">บันทึกข้อมูล</button>
+                        <button type="submit" class="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-bold">บันทึกรายการ</button>
                     </div>
                 </form>
             </div>
@@ -165,30 +214,23 @@
         let currentMode = 'dashboard', currentPage = 1, itemsPerPage = 15;
         let mainSignaturePad = null, withdrawSignaturePad = null, capturedImage = null, currentWithdrawRow = null;
 
-        // --- Bridge ฟังก์ชันสำหรับ GitHub ---
+        // --- Core Fetch Bridge ---
         async function callGAS(action, params = {}) {
-            if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes("ใส่_WEB_APP_URL")) {
-                Swal.fire("Config Error", "กรุณาตั้งค่า GAS_WEB_APP_URL ในโค้ดก่อนใช้งาน", "error");
+            if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes("exec")) { /* OK */ } else {
+                Swal.fire("Error", "กรุณาตั้งค่า URL Web App ในโค้ดก่อน", "error");
                 return null;
             }
             try {
                 const response = await fetch(GAS_WEB_APP_URL, {
                     method: "POST",
-                    body: JSON.stringify({ action, ...params }),
-                    mode: "no-cors" // ข้อจำกัดของ GAS เมื่อเรียกจากภายนอก
-                });
-                // หมายเหตุ: การใช้ 'no-cors' จะทำให้อ่านค่าตอบกลับไม่ได้โดยตรง 
-                // หากต้องการอ่านค่ากลับ แนะนำให้ใช้ Google Apps Script Web App แบบ "Anyone" 
-                // และใช้เทคนิค JSONP หรือเปลี่ยนเป็นส่ง GET แทน
-                // สำหรับโค้ดนี้ เพื่อความง่าย ผมจะปรับให้เรียกแบบปกติ (ต้องการ CORS)
-                
-                const responseNormal = await fetch(GAS_WEB_APP_URL, {
-                    method: "POST",
                     body: JSON.stringify({ action, ...params })
                 });
-                return await responseNormal.json();
+                const result = await response.json();
+                return result;
             } catch (err) {
-                console.error("Fetch error:", err);
+                console.error("GAS Connection Error:", err);
+                loading(false);
+                Swal.fire("Connection Error", "ไม่สามารถติดต่อ Server ได้ กรุณาลองใหม่อีกครั้ง", "error");
                 return null;
             }
         }
@@ -198,6 +240,7 @@
             if(text) document.getElementById('loading-text').innerText = text;
         }
 
+        // --- Data Handling ---
         async function refreshData() {
             loading(true, 'กำลังโหลดข้อมูลจาก Google Sheets...');
             const res = await callGAS("getFullData");
@@ -210,6 +253,11 @@
             loading(false);
         }
 
+        function applySystemSettings() {
+            document.getElementById('side-logo').src = systemSettings.logoUrl;
+            document.querySelectorAll('#side-title, #mob-title').forEach(el => el.innerText = systemSettings.companyName);
+        }
+
         function switchView(view) {
             currentMode = view;
             const area = document.getElementById('main-area');
@@ -217,77 +265,164 @@
             const activeBtn = document.querySelector(`.nav-btn[data-v="${view}"]`);
             if (activeBtn) activeBtn.classList.add('active-nav');
 
-            if (view.includes('list') || view === 'dashboard') {
+            if (view.includes('list') || view === 'dashboard' || view === 'trash') {
                 area.innerHTML = document.getElementById('tpl-list').innerHTML;
+                const titles = { dashboard: 'รายการล่าสุด', list_all: 'เอกสารทั้งหมด', trash: 'ถังขยะ' };
+                document.getElementById('list-head').innerText = titles[view] || 'รายการเอกสาร';
+                if(view === 'trash') document.getElementById('stats-bar').classList.add('hide');
+                populateYearFilter();
                 resetAndRender();
+                updateStats();
             } else if (view === 'in' || view === 'out') {
                 area.innerHTML = document.getElementById('tpl-form').innerHTML;
                 initEntryForm(view.toUpperCase());
+            } else if (view === 'settings') {
+                renderSettingsUI();
             }
             lucide.createIcons();
         }
 
-        async function initEntryForm(type) {
-            document.getElementById('inp-date').valueAsDate = new Date();
-            const res = await callGAS("generateNextId", { prefix: type });
-            if (res) document.getElementById('inp-id').value = res;
+        function updateStats() {
+            const counts = {
+                in: dataList.filter(d => d.status === 'active' && d.id.startsWith('IN')).length,
+                out: dataList.filter(d => d.status === 'active' && d.id.startsWith('OUT')).length,
+                del: dataList.filter(d => d.status === 'deleted').length
+            };
+            document.getElementById('stat-in').innerText = counts.in;
+            document.getElementById('stat-out').innerText = counts.out;
+            document.getElementById('stat-del').innerText = counts.del;
+        }
+
+        function populateYearFilter() {
+            const filterYear = document.getElementById('filter-year');
+            if(!filterYear) return;
+            const years = [...new Set(dataList.map(d => (d.date || "").split('/')[2]))].filter(Boolean).sort((a,b)=>b-a);
+            filterYear.innerHTML = '<option value="all">ทุกปี พ.ศ.</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
         }
 
         function resetAndRender() {
+            currentPage = 1;
+            renderFilteredTable();
+        }
+
+        function renderFilteredTable() {
             const tbody = document.getElementById('list-table');
             const search = (document.getElementById('filter-search')?.value || "").toLowerCase();
-            let filtered = dataList.filter(d => d.status === 'active');
-            if(search) filtered = filtered.filter(d => d.id.toLowerCase().includes(search) || d.title.toLowerCase().includes(search));
+            const year = document.getElementById('filter-year')?.value || "all";
 
-            tbody.innerHTML = filtered.map(item => `
+            let filtered = dataList.filter(item => {
+                if (currentMode === 'trash') return item.status === 'deleted';
+                return item.status === 'active';
+            });
+
+            if(year !== "all") filtered = filtered.filter(d => (d.date || "").includes(year));
+            if(search) filtered = filtered.filter(d => [d.id, d.title, d.sender, d.receiver].some(v => (v||"").toLowerCase().includes(search)));
+
+            const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+            const pagedItems = filtered.slice((currentPage-1)*itemsPerPage, currentPage*itemsPerPage);
+
+            tbody.innerHTML = pagedItems.map(item => {
+                const isWithdrawn = !!(item.withdrawStatus && item.withdrawStatus.includes("เบิกแล้ว"));
+                return `
                 <tr class="hover:bg-slate-50 transition-all">
-                    <td class="px-6 py-4 font-bold text-blue-600">${item.id}</td>
-                    <td class="px-6 py-4 font-medium">${item.title}</td>
-                    <td class="px-6 py-4 text-xs text-slate-400">${item.sender} -> ${item.receiver}</td>
-                    <td class="px-6 py-4 text-center">
-                        <button onclick="showDetails(${item.rowNum})" class="p-2 bg-blue-50 text-blue-600 rounded-xl"><i data-lucide="eye" class="w-4 h-4"></i></button>
+                    <td class="p-4 font-bold text-blue-600">${item.id}<br><span class="text-[10px] text-slate-400 font-normal">${item.date}</span></td>
+                    <td class="p-4 font-medium truncate max-w-[200px]">${item.title}</td>
+                    <td class="p-4 text-[10px] text-slate-400">${item.sender} -> ${item.receiver}</td>
+                    <td class="p-4 text-center flex justify-center items-center gap-2">
+                        ${isWithdrawn ? '<div class="w-8 h-8 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center" title="เบิกแล้ว"><i data-lucide="package-check" class="w-4 h-4"></i></div>' : ''}
+                        <button onclick="showDetails(${item.rowNum})" class="p-2 bg-blue-50 text-blue-600 rounded-lg"><i data-lucide="eye" class="w-4 h-4"></i></button>
+                        ${item.status === 'active' 
+                           ? `<button onclick="updateDocStatus(${item.rowNum}, 'deleted')" class="p-2 bg-red-50 text-red-500 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`
+                           : `<button onclick="updateDocStatus(${item.rowNum}, 'active')" class="p-2 bg-green-50 text-green-600 rounded-lg"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>`
+                        }
                     </td>
-                </tr>
-            `).join('');
+                </tr>`;
+            }).join('');
+            
+            renderPagination(currentPage, totalPages);
             lucide.createIcons();
         }
 
-        async function handleFormSubmit(e) {
-            e.preventDefault();
-            const sig = document.getElementById('inp-sig-data').value;
-            if(!sig) return Swal.fire("Warning", "กรุณาลงนาม", "warning");
+        function renderPagination(curr, total) {
+            document.getElementById('pagination-info').innerText = `หน้า ${curr} จาก ${total}`;
+            const nums = document.getElementById('page-numbers');
+            let html = '';
+            for(let i=1; i<=total; i++) {
+                const active = (i === curr) ? 'bg-blue-600 text-white' : 'bg-white text-slate-400 border';
+                html += `<button onclick="goToPage(${i})" class="page-btn text-[10px] font-bold ${active}">${i}</button>`;
+            }
+            nums.innerHTML = html;
+        }
+        function goToPage(p) { currentPage = p; renderFilteredTable(); }
 
-            loading(true, 'กำลังบันทึก...');
-            const payload = {
-                id: document.getElementById('inp-id').value,
-                docDate: document.getElementById('inp-date').value.split('-').reverse().join('/'),
-                title: document.getElementById('sel-subject').value,
-                sender: document.getElementById('inp-sender').value,
-                receiver: document.getElementById('inp-receiver').value,
-                sigData: sig
-            };
+        // --- Detail & Withdrawal ---
+        function showDetails(rowNum) {
+            const item = dataList.find(d => d.rowNum === rowNum);
+            if(!item) return;
 
-            const res = await callGAS("processSubmission", { payload });
-            loading(false);
-            if(res && res.success) {
-                Swal.fire("Success", "บันทึกเรียบร้อย", "success").then(() => {
-                    switchView('dashboard');
-                    refreshData();
-                });
+            const isWithdrawn = !!(item.withdrawName && item.withdrawName.trim());
+            const getThumb = url => (url && !url.includes('Error')) ? `https://drive.google.com/thumbnail?id=${url.match(/[-\w]{25,}/)}&sz=w800` : null;
+
+            const html = `
+                <div class="text-left text-sm space-y-4">
+                    <div class="bg-slate-50 p-4 rounded-2xl space-y-2">
+                        <div class="flex justify-between border-b pb-1"><span>เรื่อง:</span><span class="font-bold">${item.title}</span></div>
+                        <div class="flex justify-between border-b pb-1"><span>จาก:</span><span>${item.sender}</span></div>
+                        <div class="flex justify-between border-b pb-1"><span>ถึง:</span><span>${item.receiver}</span></div>
+                        <div class="flex justify-between"><span>วันที่:</span><span>${item.date}</span></div>
+                    </div>
+                    ${isWithdrawn ? `
+                        <div class="p-3 bg-orange-50 border border-orange-200 rounded-2xl">
+                            <p class="text-[10px] font-bold text-orange-500 mb-1">ข้อมูลการเบิก</p>
+                            <p><b>ผู้เบิก:</b> ${item.withdrawName}</p>
+                            <p class="text-[10px] text-slate-400">${item.withdrawStatus}</p>
+                            <div class="bg-white mt-2 p-2 rounded text-center">
+                                ${getThumb(item.withdrawSig) ? `<img src="${getThumb(item.withdrawSig)}" class="h-12 mx-auto">` : 'ไม่มีลายเซ็น'}
+                            </div>
+                        </div>
+                    ` : ''}
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><p class="text-[10px] text-slate-400 mb-1">หลักฐานภาพ</p>${getThumb(item.photoUrl) ? `<img src="${getThumb(item.photoUrl)}" class="h-24 w-full object-cover rounded border">` : '<div class="h-24 bg-slate-100 rounded"></div>'}</div>
+                        <div><p class="text-[10px] text-slate-400 mb-1">ลายเซ็นรับ</p>${getThumb(item.sigUrl) ? `<img src="${getThumb(item.sigUrl)}" class="h-24 w-full object-contain rounded border">` : '<div class="h-24 bg-slate-100 rounded"></div>'}</div>
+                    </div>
+                    ${item.fileUrl && !item.fileUrl.includes('Error') ? `<a href="${item.fileUrl}" target="_blank" class="block py-3 bg-blue-600 text-white text-center rounded-xl font-bold">เปิดดูเอกสารหลัก</a>` : ''}
+                    ${(!isWithdrawn && item.status === 'active') ? `<button onclick="openModal('withdraw-modal', ${item.rowNum})" class="w-full py-3 bg-orange-500 text-white rounded-xl font-bold">ทำรายการเบิกเอกสาร</button>` : ''}
+                </div>
+            `;
+
+            Swal.fire({
+                title: `<span class="text-blue-600">${item.id}</span>`,
+                html: html,
+                showConfirmButton: false,
+                didOpen: () => lucide.createIcons()
+            });
+        }
+
+        // --- Modal & Pad Control ---
+        function openModal(id, rowNum = null) {
+            Swal.close();
+            const modal = document.getElementById(id);
+            modal.style.display = 'flex';
+            const canvas = (id === 'sig-modal') ? document.getElementById('sig-canvas-main') : document.getElementById('withdraw-canvas');
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+
+            if(id === 'sig-modal') {
+                if(!mainSignaturePad) mainSignaturePad = new SignaturePad(canvas);
+                mainSignaturePad.clear();
+            } else {
+                currentWithdrawRow = rowNum;
+                if(!withdrawSignaturePad) withdrawSignaturePad = new SignaturePad(canvas);
+                withdrawSignaturePad.clear();
+                document.getElementById('withdraw-name').value = '';
             }
         }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-        function openModal(id) { 
-            document.getElementById(id).classList.add('active'); 
-            const canvas = id === 'sig-modal' ? document.getElementById('sig-canvas-main') : document.getElementById('withdraw-canvas');
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            canvas.width = canvas.offsetWidth * ratio; canvas.height = canvas.offsetHeight * ratio;
-            canvas.getContext("2d").scale(ratio, ratio);
-            if(id === 'sig-modal') mainSignaturePad = new SignaturePad(canvas);
-            else withdrawSignaturePad = new SignaturePad(canvas);
-        }
-        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-        function confirmMainSignature() {
+        function saveSignatureFromModal() {
+            if(mainSignaturePad.isEmpty()) return;
             const data = mainSignaturePad.toDataURL();
             document.getElementById('inp-sig-data').value = data;
             document.getElementById('sig-preview-img').src = data;
@@ -296,13 +431,118 @@
             closeModal('sig-modal');
         }
 
-        function toggleSidebar() { 
-            const sb = document.getElementById('main-sidebar'), ol = document.getElementById('sidebar-overlay');
-            sb.classList.toggle('-translate-x-full');
-            ol.classList.toggle('hidden');
+        async function submitWithdraw() {
+            const name = document.getElementById('withdraw-name').value;
+            if(!name || withdrawSignaturePad.isEmpty()) return Swal.fire("Warning", "กรุณาระบุข้อมูลให้ครบ", "warning");
+            loading(true, 'กำลังบันทึกการเบิก...');
+            const res = await callGAS("recordWithdrawal", { payload: { rowNum: currentWithdrawRow, withdrawName: name, withdrawSig: withdrawSignaturePad.toDataURL() }});
+            loading(false);
+            if(res && res.success) {
+                closeModal('withdraw-modal');
+                Swal.fire("Success", "เบิกเอกสารเรียบร้อย", "success").then(refreshData);
+            }
+        }
+
+        // --- Form Submission ---
+        async function initEntryForm(type) {
+            document.getElementById('form-title-text').innerText = (type === 'IN' ? 'ลงทะเบียนรับเอกสาร' : 'บันทึกการส่งเอกสาร');
+            document.getElementById('form-icon-box').innerHTML = `<i data-lucide="${type === 'IN' ? 'download-cloud' : 'upload-cloud'}"></i>`;
+            document.getElementById('inp-date').valueAsDate = new Date();
+            const id = await callGAS("generateNextId", { prefix: type });
+            if(id) document.getElementById('inp-id').value = id;
+            const depts = await callGAS("getDepartments");
+            if(depts) document.getElementById('dept-list').innerHTML = depts.map(d => `<option value="${d}">`).join('');
+            lucide.createIcons();
+        }
+
+        function toggleOtherSubject(val) {
+            document.getElementById('inp-subject-other').classList.toggle('hide', val !== 'OTHER');
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const sig = document.getElementById('inp-sig-data').value;
+            if(!sig) return Swal.fire("Warning", "กรุณาลงลายมือชื่อ", "warning");
+
+            loading(true, 'กำลังบันทึกข้อมูล...');
+            const selectVal = document.getElementById('sel-subject').value;
+            const finalTitle = selectVal === 'OTHER' ? document.getElementById('inp-subject-other').value : selectVal;
+            
+            const fileEl = document.getElementById('inp-file');
+            let fileData = null, fileName = "";
+            if (fileEl.files[0]) {
+                fileData = await fileToBase64(fileEl.files[0]);
+                fileName = fileEl.files[0].name;
+            }
+
+            const payload = {
+                id: document.getElementById('inp-id').value,
+                docDate: document.getElementById('inp-date').value.split('-').reverse().join('/'),
+                title: finalTitle,
+                sender: document.getElementById('inp-sender').value,
+                receiver: document.getElementById('inp-receiver').value,
+                emailRecipient: document.getElementById('inp-email').value,
+                fileData, fileName,
+                photoData: capturedImage,
+                sigData: sig
+            };
+
+            const res = await callGAS("processSubmission", { payload });
+            loading(false);
+            if(res && res.success) {
+                Swal.fire("สำเร็จ", "บันทึกข้อมูลเรียบร้อย", "success").then(() => {
+                    switchView('dashboard');
+                    refreshData();
+                });
+            }
+        }
+
+        // --- Other Actions ---
+        async function updateDocStatus(rowNum, status) {
+            loading(true);
+            await callGAS("updateStatus", { rowNum, status });
+            refreshData();
+        }
+
+        function renderSettingsUI() {
+            const area = document.getElementById('main-area');
+            area.innerHTML = `
+                <div class="max-w-xl mx-auto bg-white p-8 rounded-3xl shadow-xl border">
+                    <h2 class="text-xl font-bold mb-6">ตั้งค่าระบบ</h2>
+                    <div class="space-y-4">
+                        <input type="text" id="set-name" value="${systemSettings.companyName}" placeholder="ชื่อหน่วยงาน" class="w-full p-4 bg-slate-50 rounded-xl border-none outline-none">
+                        <input type="text" id="set-logo" value="${systemSettings.logoUrl}" placeholder="ลิงก์โลโก้ (URL)" class="w-full p-4 bg-slate-50 rounded-xl border-none outline-none">
+                        <button onclick="saveAppSettings()" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold">บันทึกการตั้งค่า</button>
+                    </div>
+                </div>`;
+        }
+
+        async function saveAppSettings() {
+            const s = { companyName: document.getElementById('set-name').value, logoUrl: document.getElementById('set-logo').value };
+            loading(true);
+            await callGAS("saveSettings", { settings: s });
+            refreshData();
+            Swal.fire("สำเร็จ", "บันทึกเรียบร้อย", "success");
+        }
+
+        // --- Helpers ---
+        function toggleSidebar() {
+            document.getElementById('main-sidebar').classList.toggle('-translate-x-full');
+            document.getElementById('sidebar-overlay').classList.toggle('hidden');
         }
         function handleNavClick(v) { if(window.innerWidth < 768) toggleSidebar(); switchView(v); }
-        function applySystemSettings() { document.getElementById('side-logo').src = systemSettings.logoUrl; document.getElementById('side-title').innerText = systemSettings.companyName; }
+        async function processPhotoSelection(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    capturedImage = e.target.result;
+                    document.getElementById('photo-preview-box').innerHTML = `<img src="${capturedImage}" class="h-full w-full object-cover">`;
+                    document.getElementById('photo-preview-box').classList.remove('hide');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+        function fileToBase64(f) { return new Promise((r, j) => { const rd = new FileReader(); rd.readAsDataURL(f); rd.onload = () => r(rd.result); rd.onerror = e => j(e); }); }
 
         window.onload = () => { refreshData(); lucide.createIcons(); };
     </script>
