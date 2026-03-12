@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Document Enterprise V5.0 (GitHub)</title>
+    <!-- Fonts & CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
+        .active-nav { background-color: #3b82f6 !important; color: white !important; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+        .sig-trigger-box { position: relative; width: 100%; height: 160px; border: 2px dashed #cbd5e1; border-radius: 16px; background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .sig-trigger-box:hover { border-color: #3b82f6; background: #f1f5f9; }
+        #sig-preview-img { max-height: 90%; max-width: 90%; object-fit: contain; }
+        .app-modal { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 1rem; }
+        .app-modal.active { display: flex; }
+        .modal-content { background: white; width: 100%; max-width: 600px; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); overflow: hidden; display: flex; flex-direction: column; animation: modal-in 0.3s ease-out; }
+        @keyframes modal-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .sig-canvas-container { width: 100%; height: 320px; background: #fff; border-bottom: 1px solid #e2e8f0; }
+        canvas { width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+        .loader-spin { border-top-color: #3b82f6; animation: spin 0.8s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .hide { display: none !important; }
+        .transition-sidebar { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <!-- แก้ไข URL ตรงนี้: ใส่ Web App URL ที่ได้จากขั้นตอน Deployment -->
+    <script>
+        const GAS_WEB_APP_URL = "ใส่_WEB_APP_URL_ของคุณที่นี่";
+    </script>
+
+    <!-- Global Loading -->
+    <div id="loading" class="fixed inset-0 z-[10000] flex items-center justify-center bg-white/80 backdrop-blur-sm">
+        <div class="flex flex-col items-center bg-white p-8 rounded-3xl shadow-2xl">
+            <div class="loader-spin rounded-full border-4 border-slate-100 h-12 w-12 mb-4"></div>
+            <p id="loading-text" class="text-slate-600 font-semibold text-sm">กำลังเชื่อมต่อ Server...</p>
+        </div>
+    </div>
+
+    <!-- Modals (Signatures / Withdraw) -->
+    <div id="sig-modal" class="app-modal">
+        <div class="modal-content">
+            <div class="p-5 border-b flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800">ลงลายมือชื่อยืนยัน</h3>
+                <button onclick="closeModal('sig-modal')" class="p-2 hover:bg-slate-200 rounded-full"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+            <div class="sig-canvas-container"><canvas id="sig-canvas-main"></canvas></div>
+            <div class="p-5 bg-slate-50 flex gap-4">
+                <button onclick="mainSignaturePad.clear()" class="flex-1 py-4 text-red-500 font-bold border border-red-100 rounded-2xl">ล้าง</button>
+                <button onclick="confirmMainSignature()" class="flex-[2] py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-200">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="withdraw-modal" class="app-modal">
+        <div class="modal-content max-w-lg">
+            <div class="p-6 border-b flex justify-between items-center bg-orange-50">
+                <h3 class="font-bold text-orange-800">บันทึกการเบิกเอกสาร</h3>
+                <button onclick="closeModal('withdraw-modal')" class="text-orange-400"><i data-lucide="x"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="text" id="withdraw-name" placeholder="ชื่อผู้เบิกเอกสาร" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-orange-500 outline-none">
+                <div class="border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50 h-48 overflow-hidden">
+                    <canvas id="withdraw-canvas"></canvas>
+                </div>
+            </div>
+            <div class="p-6 bg-slate-50 flex gap-3">
+                <button onclick="closeModal('withdraw-modal')" class="flex-1 py-4 bg-white border rounded-2xl">ยกเลิก</button>
+                <button onclick="submitWithdraw()" class="flex-[2] py-4 bg-orange-600 text-white rounded-2xl font-bold">บันทึกการเบิก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-[40] hidden"></div>
+    <div class="flex h-screen overflow-hidden">
+        <aside id="main-sidebar" class="fixed inset-y-0 left-0 z-[50] w-72 bg-white border-r md:relative md:translate-x-0 -translate-x-full flex flex-col shrink-0 transition-sidebar">
+            <div class="p-8 text-center border-b flex flex-col items-center">
+                <img id="side-logo" src="https://cdn-icons-png.flaticon.com/512/281/281760.png" class="w-16 h-16 mb-4">
+                <h1 id="side-title" class="font-bold text-slate-800 text-lg truncate w-full">E-Document</h1>
+            </div>
+            <nav class="flex-1 p-6 space-y-2 overflow-y-auto">
+                <button onclick="handleNavClick('dashboard')" class="nav-btn w-full flex items-center p-3.5 rounded-2xl text-slate-600 hover:bg-slate-50 transition-all" data-v="dashboard"><i data-lucide="layout-grid" class="w-5 h-5 mr-3"></i> แดชบอร์ด</button>
+                <button onclick="handleNavClick('in')" class="nav-btn w-full flex items-center p-3.5 rounded-2xl text-slate-600 hover:bg-slate-50 transition-all" data-v="in"><i data-lucide="file-plus-2" class="w-5 h-5 mr-3 text-emerald-500"></i> ลงรับ</button>
+                <button onclick="handleNavClick('out')" class="nav-btn w-full flex items-center p-3.5 rounded-2xl text-slate-600 hover:bg-slate-50 transition-all" data-v="out"><i data-lucide="file-up" class="w-5 h-5 mr-3 text-orange-500"></i> ส่งออก</button>
+                <button onclick="handleNavClick('list_all')" class="nav-btn w-full flex items-center p-3.5 rounded-2xl text-slate-600 hover:bg-slate-50 transition-all" data-v="list_all"><i data-lucide="files" class="w-5 h-5 mr-3 text-blue-500"></i> คลังเอกสาร</button>
+                <button onclick="handleNavClick('settings')" class="nav-btn w-full flex items-center p-3.5 rounded-2xl text-slate-600 hover:bg-slate-50 transition-all" data-v="settings"><i data-lucide="settings" class="w-5 h-5 mr-3"></i> ตั้งค่า</button>
+            </nav>
+        </aside>
+
+        <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <header class="bg-white/80 backdrop-blur-md border-b px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleSidebar()" class="md:hidden p-2"><i data-lucide="menu"></i></button>
+                    <span id="mob-title" class="font-bold text-slate-800 text-lg">E-Document</span>
+                </div>
+                <button onclick="refreshData()" class="p-2 text-slate-400 hover:text-blue-600"><i data-lucide="refresh-cw" class="w-5 h-5"></i></button>
+            </header>
+            <div id="main-area" class="flex-1 overflow-y-auto p-4 md:p-10"></div>
+        </main>
+    </div>
+
+    <!-- Templates (Dashboard / List / Form) -->
+    <div id="tpl-store" class="hide">
+        <div id="tpl-list">
+            <div class="bg-white rounded-3xl shadow-sm border p-6 mb-6 flex justify-between items-center">
+                <h2 id="list-head" class="font-bold text-lg text-slate-800">รายการ</h2>
+                <div class="flex gap-2">
+                   <input type="text" id="filter-search" onkeyup="resetAndRender()" placeholder="ค้นหา..." class="px-4 py-2 bg-slate-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            <div class="bg-white rounded-3xl shadow-sm border overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 text-slate-400 text-[10px] uppercase font-bold tracking-widest border-b">
+                            <tr><th class="px-6 py-4">เลขที่</th><th class="px-6 py-4">เรื่อง</th><th class="px-6 py-4">ผู้ติดต่อ</th><th class="px-6 py-4 text-center">จัดการ</th></tr>
+                        </thead>
+                        <tbody id="list-table" class="divide-y text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="tpl-form">
+            <div class="max-w-2xl mx-auto bg-white p-8 md:p-12 rounded-[2.5rem] shadow-xl border">
+                <h2 id="form-title-text" class="text-xl font-bold mb-8 text-slate-800 border-b pb-4">แบบฟอร์มบันทึก</h2>
+                <form id="main-form" onsubmit="handleFormSubmit(event)" class="space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <input type="text" id="inp-id" readonly class="p-4 bg-slate-50 rounded-2xl font-bold text-blue-600">
+                        <input type="date" id="inp-date" required class="p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <select id="sel-subject" onchange="toggleOtherSubject(this.value)" required class="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="" disabled selected>เลือกหัวข้อ</option>
+                        <option value="เอกสารรายเดือน">เอกสารรายเดือน</option>
+                        <option value="OTHER">อื่นๆ</option>
+                    </select>
+                    <div id="other-subject-container" class="hide"><input type="text" id="inp-subject-other" placeholder="ระบุหัวข้อเอง" class="w-full p-4 border rounded-2xl"></div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <input type="text" id="inp-sender" placeholder="ผู้ส่ง" required class="p-4 bg-slate-50 rounded-2xl outline-none">
+                        <input type="text" id="inp-receiver" placeholder="ผู้รับ" required class="p-4 bg-slate-50 rounded-2xl outline-none">
+                    </div>
+                    <div onclick="openModal('sig-modal')" class="sig-trigger-box">
+                        <p id="sig-placeholder" class="text-slate-400 text-xs">แตะเพื่อลงลายมือชื่อ</p>
+                        <img id="sig-preview-img" class="hide">
+                    </div>
+                    <input type="hidden" id="inp-sig-data">
+                    <div class="flex gap-4">
+                        <button type="button" onclick="switchView('dashboard')" class="flex-1 py-4 bg-slate-100 rounded-2xl">ยกเลิก</button>
+                        <button type="submit" class="flex-[2] py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-200">บันทึกข้อมูล</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let dataList = [], systemSettings = { companyName: 'E-Document', logoUrl: 'https://cdn-icons-png.flaticon.com/512/281/281760.png' };
+        let currentMode = 'dashboard', currentPage = 1, itemsPerPage = 15;
+        let mainSignaturePad = null, withdrawSignaturePad = null, capturedImage = null, currentWithdrawRow = null;
+
+        // --- Bridge ฟังก์ชันสำหรับ GitHub ---
+        async function callGAS(action, params = {}) {
+            if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes("ใส่_WEB_APP_URL")) {
+                Swal.fire("Config Error", "กรุณาตั้งค่า GAS_WEB_APP_URL ในโค้ดก่อนใช้งาน", "error");
+                return null;
+            }
+            try {
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: "POST",
+                    body: JSON.stringify({ action, ...params }),
+                    mode: "no-cors" // ข้อจำกัดของ GAS เมื่อเรียกจากภายนอก
+                });
+                // หมายเหตุ: การใช้ 'no-cors' จะทำให้อ่านค่าตอบกลับไม่ได้โดยตรง 
+                // หากต้องการอ่านค่ากลับ แนะนำให้ใช้ Google Apps Script Web App แบบ "Anyone" 
+                // และใช้เทคนิค JSONP หรือเปลี่ยนเป็นส่ง GET แทน
+                // สำหรับโค้ดนี้ เพื่อความง่าย ผมจะปรับให้เรียกแบบปกติ (ต้องการ CORS)
+                
+                const responseNormal = await fetch(GAS_WEB_APP_URL, {
+                    method: "POST",
+                    body: JSON.stringify({ action, ...params })
+                });
+                return await responseNormal.json();
+            } catch (err) {
+                console.error("Fetch error:", err);
+                return null;
+            }
+        }
+
+        function loading(show, text) {
+            document.getElementById('loading').style.display = show ? 'flex' : 'none';
+            if(text) document.getElementById('loading-text').innerText = text;
+        }
+
+        async function refreshData() {
+            loading(true, 'กำลังโหลดข้อมูลจาก Google Sheets...');
+            const res = await callGAS("getFullData");
+            if (res) {
+                dataList = res.list || [];
+                systemSettings = res.settings || systemSettings;
+                applySystemSettings();
+                switchView(currentMode);
+            }
+            loading(false);
+        }
+
+        function switchView(view) {
+            currentMode = view;
+            const area = document.getElementById('main-area');
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active-nav'));
+            const activeBtn = document.querySelector(`.nav-btn[data-v="${view}"]`);
+            if (activeBtn) activeBtn.classList.add('active-nav');
+
+            if (view.includes('list') || view === 'dashboard') {
+                area.innerHTML = document.getElementById('tpl-list').innerHTML;
+                resetAndRender();
+            } else if (view === 'in' || view === 'out') {
+                area.innerHTML = document.getElementById('tpl-form').innerHTML;
+                initEntryForm(view.toUpperCase());
+            }
+            lucide.createIcons();
+        }
+
+        async function initEntryForm(type) {
+            document.getElementById('inp-date').valueAsDate = new Date();
+            const res = await callGAS("generateNextId", { prefix: type });
+            if (res) document.getElementById('inp-id').value = res;
+        }
+
+        function resetAndRender() {
+            const tbody = document.getElementById('list-table');
+            const search = (document.getElementById('filter-search')?.value || "").toLowerCase();
+            let filtered = dataList.filter(d => d.status === 'active');
+            if(search) filtered = filtered.filter(d => d.id.toLowerCase().includes(search) || d.title.toLowerCase().includes(search));
+
+            tbody.innerHTML = filtered.map(item => `
+                <tr class="hover:bg-slate-50 transition-all">
+                    <td class="px-6 py-4 font-bold text-blue-600">${item.id}</td>
+                    <td class="px-6 py-4 font-medium">${item.title}</td>
+                    <td class="px-6 py-4 text-xs text-slate-400">${item.sender} -> ${item.receiver}</td>
+                    <td class="px-6 py-4 text-center">
+                        <button onclick="showDetails(${item.rowNum})" class="p-2 bg-blue-50 text-blue-600 rounded-xl"><i data-lucide="eye" class="w-4 h-4"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const sig = document.getElementById('inp-sig-data').value;
+            if(!sig) return Swal.fire("Warning", "กรุณาลงนาม", "warning");
+
+            loading(true, 'กำลังบันทึก...');
+            const payload = {
+                id: document.getElementById('inp-id').value,
+                docDate: document.getElementById('inp-date').value.split('-').reverse().join('/'),
+                title: document.getElementById('sel-subject').value,
+                sender: document.getElementById('inp-sender').value,
+                receiver: document.getElementById('inp-receiver').value,
+                sigData: sig
+            };
+
+            const res = await callGAS("processSubmission", { payload });
+            loading(false);
+            if(res && res.success) {
+                Swal.fire("Success", "บันทึกเรียบร้อย", "success").then(() => {
+                    switchView('dashboard');
+                    refreshData();
+                });
+            }
+        }
+
+        function openModal(id) { 
+            document.getElementById(id).classList.add('active'); 
+            const canvas = id === 'sig-modal' ? document.getElementById('sig-canvas-main') : document.getElementById('withdraw-canvas');
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio; canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+            if(id === 'sig-modal') mainSignaturePad = new SignaturePad(canvas);
+            else withdrawSignaturePad = new SignaturePad(canvas);
+        }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+        function confirmMainSignature() {
+            const data = mainSignaturePad.toDataURL();
+            document.getElementById('inp-sig-data').value = data;
+            document.getElementById('sig-preview-img').src = data;
+            document.getElementById('sig-preview-img').classList.remove('hide');
+            document.getElementById('sig-placeholder').classList.add('hide');
+            closeModal('sig-modal');
+        }
+
+        function toggleSidebar() { 
+            const sb = document.getElementById('main-sidebar'), ol = document.getElementById('sidebar-overlay');
+            sb.classList.toggle('-translate-x-full');
+            ol.classList.toggle('hidden');
+        }
+        function handleNavClick(v) { if(window.innerWidth < 768) toggleSidebar(); switchView(v); }
+        function applySystemSettings() { document.getElementById('side-logo').src = systemSettings.logoUrl; document.getElementById('side-title').innerText = systemSettings.companyName; }
+
+        window.onload = () => { refreshData(); lucide.createIcons(); };
+    </script>
+</body>
+</html>
