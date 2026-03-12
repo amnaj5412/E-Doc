@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Document Enterprise V5.1 (GitHub Full)</title>
+    <title>E-Document Enterprise V5.2 (GitHub Full)</title>
     <!-- CSS & Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,47 +18,46 @@
         .sig-trigger-box:hover { border-color: #3b82f6; background: #f8fafc; }
         #sig-preview-img { max-height: 90%; max-width: 90%; object-fit: contain; }
         #sig-modal, #withdraw-modal { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 1rem; }
-        .modal-content { background: white; width: 100%; max-width: 600px; border-radius: 28px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); overflow: hidden; display: flex; flex-direction: column; }
+        .modal-content { background: white; width: 100%; max-width: 700px; border-radius: 28px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); overflow: hidden; display: flex; flex-direction: column; }
         .sig-canvas-container { width: 100%; height: 380px; background: #fff; position: relative; touch-action: none; }
         canvas { width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
         .loader-spin { border-top-color: #3b82f6; animation: spin 0.8s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .hide { display: none !important; }
         #main-sidebar { transition: transform 0.3s ease-in-out; }
-        .page-btn { padding: 8px 12px; border-radius: 8px; transition: all 0.2s; }
+        .page-btn { padding: 6px 12px; border-radius: 8px; font-size: 12px; transition: all 0.2s; }
     </style>
 </head>
 <body class="text-slate-800">
 
     <script>
-        // *** สำคัญ: วาง URL Web App ของคุณที่นี่ ***
+        // *** สำคัญ: วาง URL Web App ของคุณที่นี่ (ที่ได้จาก Google Apps Script) ***
         const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxmkVkx7Ut-f0pnEs6PEAJIa6mXV70gLu03P1NnTay5xPMEIkkON4HvODg8-Bovvbkc/exec";
     </script>
 
-    <!-- Global Loading -->
+    <!-- Global Loading Overlay -->
     <div id="loading" class="fixed inset-0 z-[9999] flex items-center justify-center bg-white/90">
         <div class="flex flex-col items-center">
             <div class="loader-spin rounded-full border-4 border-slate-200 h-14 w-14 mb-4"></div>
-            <p id="loading-text" class="text-slate-500 font-medium text-sm">กำลังเชื่อมต่อ Server...</p>
+            <p id="loading-text" class="text-slate-500 font-medium">กำลังเชื่อมต่อกับ Server...</p>
         </div>
     </div>
 
-    <!-- Main Entry Signature Modal -->
+    <!-- Modals (Signatures / Withdrawal) -->
     <div id="sig-modal">
         <div class="modal-content">
             <div class="p-5 border-b flex justify-between items-center bg-slate-50">
-                <div><h3 class="font-bold text-slate-700">ลงลายมือชื่อยืนยัน</h3><p class="text-[10px] text-slate-400">เซ็นชื่อภายในกรอบ</p></div>
-                <button onclick="closeModal('sig-modal')" class="p-2"><i data-lucide="x" class="text-slate-400"></i></button>
+                <div><h3 class="font-bold text-slate-700 text-lg">ลงลายมือชื่อยืนยัน</h3><p class="text-xs text-slate-400">เซ็นชื่อภายในกรอบให้ชัดเจน</p></div>
+                <button onclick="closeModal('sig-modal')" class="p-2 hover:bg-slate-200 rounded-full"><i data-lucide="x" class="text-slate-400"></i></button>
             </div>
             <div class="sig-canvas-container"><canvas id="sig-canvas-main"></canvas></div>
             <div class="p-5 bg-slate-50 flex gap-4">
-                <button onclick="mainSignaturePad.clear()" class="flex-1 py-4 text-red-500 font-bold border rounded-2xl">ล้าง</button>
-                <button onclick="saveSignatureFromModal()" class="flex-[2] py-4 bg-blue-600 text-white font-bold rounded-2xl">ยืนยันลายเซ็น</button>
+                <button onclick="mainSignaturePad.clear()" class="flex-1 py-4 text-red-500 font-bold border border-red-100 rounded-2xl hover:bg-red-50">ล้างหน้าจอ</button>
+                <button onclick="saveSignatureFromModal()" class="flex-[2] py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 hover:bg-blue-700">ยืนยันลายเซ็น</button>
             </div>
         </div>
     </div>
 
-    <!-- Withdrawal Modal -->
     <div id="withdraw-modal">
         <div class="modal-content max-w-lg">
             <div class="p-6 border-b flex justify-between items-center bg-orange-50">
@@ -75,23 +74,24 @@
                     <div class="border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50 h-48 overflow-hidden">
                         <canvas id="withdraw-canvas"></canvas>
                     </div>
+                    <button onclick="withdrawSignaturePad.clear()" class="text-[10px] text-red-500 underline mt-1">ล้างลายเซ็น</button>
                 </div>
             </div>
             <div class="p-6 bg-slate-50 flex gap-3">
-                <button onclick="closeModal('withdraw-modal')" class="flex-1 py-3 bg-white border rounded-xl">ยกเลิก</button>
+                <button onclick="closeModal('withdraw-modal')" class="flex-1 py-3 bg-white border text-slate-500 rounded-xl font-bold">ยกเลิก</button>
                 <button onclick="submitWithdraw()" class="flex-[2] py-3 bg-orange-600 text-white rounded-xl font-bold shadow-lg shadow-orange-200">ยืนยันบันทึกการเบิก</button>
             </div>
         </div>
     </div>
 
-    <!-- Sidebar Overlay -->
+    <!-- Sidebar Overlay Mobile -->
     <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-[40] hidden md:hidden"></div>
 
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
         <aside id="main-sidebar" class="fixed inset-y-0 left-0 z-[50] w-64 bg-white border-r shadow-xl md:shadow-none md:relative md:translate-x-0 -translate-x-full flex flex-col shrink-0">
-            <div class="p-6 text-center border-b relative">
-                <button onclick="toggleSidebar()" class="md:hidden absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-6 h-6"></i></button>
+            <div class="p-6 text-center border-b relative flex flex-col items-center">
+                <button onclick="toggleSidebar()" class="md:hidden absolute top-4 right-4 p-2 text-slate-400"><i data-lucide="x" class="w-6 h-6"></i></button>
                 <img id="side-logo" src="https://cdn-icons-png.flaticon.com/512/281/281760.png" class="w-16 h-16 mx-auto mb-2 object-contain rounded-xl">
                 <h1 id="side-title" class="font-bold text-slate-700 truncate w-full">E-Document</h1>
             </div>
@@ -100,7 +100,7 @@
                 <div class="text-[10px] font-bold text-slate-400 px-3 pt-4 pb-2 uppercase tracking-widest">ทำรายการ</div>
                 <button onclick="handleNavClick('in')" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-600 hover:bg-slate-50" data-v="in"><i data-lucide="file-plus-2" class="w-5 h-5 mr-3 text-green-500"></i> ลงทะเบียนรับ</button>
                 <button onclick="handleNavClick('out')" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-600 hover:bg-slate-50" data-v="out"><i data-lucide="file-up" class="w-5 h-5 mr-3 text-orange-500"></i> บันทึกการส่ง</button>
-                <div class="text-[10px] font-bold text-slate-400 px-3 pt-4 pb-2 uppercase tracking-widest">คลัง</div>
+                <div class="text-[10px] font-bold text-slate-400 px-3 pt-4 pb-2 uppercase tracking-widest">คลังเอกสาร</div>
                 <button onclick="handleNavClick('list_all')" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-600 hover:bg-slate-50" data-v="list_all"><i data-lucide="files" class="w-5 h-5 mr-3"></i> เอกสารทั้งหมด</button>
                 <button onclick="handleNavClick('trash')" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-600 hover:bg-slate-50" data-v="trash"><i data-lucide="trash-2" class="w-5 h-5 mr-3 text-red-400"></i> รายการจำหน่าย</button>
                 <button onclick="handleNavClick('settings')" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-600 hover:bg-slate-50" data-v="settings"><i data-lucide="settings" class="w-5 h-5 mr-3"></i> ตั้งค่า</button>
@@ -110,19 +110,23 @@
         <!-- Main Content -->
         <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
             <header class="bg-white border-b p-3 flex items-center justify-between sticky top-0 z-30">
-                <div class="flex items-center gap-2">
-                    <button onclick="toggleSidebar()" class="p-2 text-slate-500 md:hidden"><i data-lucide="menu"></i></button>
-                    <span id="mob-title" class="font-bold text-blue-600 text-lg">E-Doc Enterprise</span>
+                <div class="flex items-center gap-2 overflow-hidden">
+                    <button onclick="toggleSidebar()" class="p-2 text-slate-500 md:hidden hover:bg-slate-100 rounded-lg"><i data-lucide="menu"></i></button>
+                    <img id="mob-logo" src="https://cdn-icons-png.flaticon.com/512/281/281760.png" class="w-8 h-8 rounded md:hidden">
+                    <span id="mob-title" class="font-bold text-blue-600 text-lg truncate">E-Doc Enterprise</span>
                 </div>
-                <button onclick="refreshData()" class="p-2 text-slate-400 hover:text-blue-500"><i data-lucide="refresh-cw" class="w-5 h-5"></i></button>
+                <button onclick="refreshData()" class="p-2 text-slate-400 hover:text-blue-500 transition-colors"><i data-lucide="refresh-cw" class="w-5 h-5"></i></button>
             </header>
-            <div id="main-area" class="flex-1 overflow-y-auto p-4 md:p-8"></div>
+            <div id="main-area" class="flex-1 overflow-y-auto p-4 md:p-8">
+                <!-- Initial Splash -->
+                <div class="flex items-center justify-center h-full text-slate-300 italic">กำลังดึงข้อมูล...</div>
+            </div>
         </main>
     </div>
 
     <!-- UI Templates -->
     <div id="tpl-store" class="hide">
-        <!-- List View with Stats -->
+        <!-- List & Dashboard -->
         <div id="tpl-list">
             <div id="stats-bar" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 <div class="bg-white p-5 rounded-2xl shadow-sm border-l-4 border-blue-500">
@@ -142,67 +146,102 @@
             <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
                 <div class="p-4 border-b flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                     <h2 id="list-head" class="font-bold text-slate-700 text-lg">รายการเอกสาร</h2>
-                    <div class="flex gap-2 w-full lg:w-auto">
-                        <select id="filter-year" onchange="resetAndRender()" class="px-3 py-2 bg-slate-50 border-none rounded-xl text-sm outline-none">
-                            <option value="all">ทุกปี พ.ศ.</option>
+                    <div class="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+                        <select id="filter-year" onchange="resetAndRender()" class="px-3 py-2 bg-slate-50 border-none rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-400">
+                            <option value="all">ปี พ.ศ. ทั้งหมด</option>
                         </select>
-                        <input type="text" id="filter-search" onkeyup="resetAndRender()" placeholder="ค้นหา..." class="flex-1 lg:w-64 px-4 py-2 bg-slate-50 rounded-xl text-sm outline-none">
+                        <div class="relative flex-1 lg:w-64">
+                            <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-300"></i>
+                            <input type="text" id="filter-search" onkeyup="resetAndRender()" placeholder="ค้นหาเลขที่, เรื่อง, ชื่อ..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-400">
+                        </div>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse min-w-[600px]">
-                        <thead class="bg-slate-50 text-slate-400 text-[10px] uppercase font-bold">
-                            <tr><th class="p-4">เลขที่/วันที่</th><th class="p-4">เรื่อง</th><th class="p-4">ผู้ติดต่อ</th><th class="p-4 text-center">จัดการ</th></tr>
+                    <table class="w-full text-left border-collapse min-w-[700px]">
+                        <thead class="bg-slate-50 text-slate-400 text-[10px] uppercase font-bold tracking-widest border-b">
+                            <tr><th class="p-4">เลขที่ / วันที่</th><th class="p-4">เรื่อง / รายละเอียด</th><th class="p-4">ผู้ส่ง - ผู้รับ</th><th class="p-4 text-center">จัดการ</th></tr>
                         </thead>
                         <tbody id="list-table" class="divide-y text-sm"></tbody>
                     </table>
                 </div>
-                <div class="p-4 bg-slate-50 border-t flex justify-between items-center text-xs">
-                    <div id="pagination-info" class="text-slate-400"></div>
+                <div class="p-4 bg-slate-50 border-t flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div id="pagination-info" class="text-xs text-slate-400 font-medium tracking-tight"></div>
                     <div id="page-numbers" class="flex gap-1"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Entry Form View -->
+        <!-- Form View -->
         <div id="tpl-form">
             <div class="max-w-2xl mx-auto bg-white rounded-3xl shadow-xl p-6 md:p-10 border">
-                <div class="flex items-center mb-8">
-                    <div id="form-icon-box" class="p-3 bg-blue-50 text-blue-600 rounded-xl mr-4"></div>
-                    <h2 id="form-title-text" class="text-xl font-bold text-slate-800"></h2>
+                <div class="flex items-center mb-8 border-b pb-4">
+                    <div id="form-icon-box" class="p-3 bg-blue-50 text-blue-600 rounded-xl mr-4 shadow-sm"></div>
+                    <div>
+                        <h2 id="form-title-text" class="text-xl font-bold text-slate-800"></h2>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">กรุณากรอกข้อมูลให้ครบถ้วน</p>
+                    </div>
                 </div>
                 <form id="main-form" onsubmit="handleFormSubmit(event)" class="space-y-5">
                     <div class="grid grid-cols-2 gap-4">
-                        <div><label class="text-[10px] font-bold text-slate-400 ml-1">เลขที่อ้างอิง</label><input type="text" id="inp-id" readonly class="w-full p-3 bg-slate-50 rounded-xl font-bold text-blue-600 outline-none"></div>
-                        <div><label class="text-[10px] font-bold text-slate-400 ml-1">วันที่เอกสาร</label><input type="date" id="inp-date" required class="w-full p-3 bg-slate-50 rounded-xl outline-none"></div>
+                        <div><label class="text-[10px] font-bold text-slate-500 ml-1 mb-1 block uppercase">เลขที่อ้างอิง</label><input type="text" id="inp-id" readonly class="w-full p-3 bg-slate-100 rounded-xl font-bold text-blue-600 outline-none"></div>
+                        <div><label class="text-[10px] font-bold text-slate-500 ml-1 mb-1 block uppercase">วันที่เอกสาร</label><input type="date" id="inp-date" required class="w-full p-3 bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-xl outline-none transition-all"></div>
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold text-slate-400 ml-1">ชื่อเรื่องเอกสาร</label>
-                        <select id="sel-subject" onchange="toggleOtherSubject(this.value)" required class="w-full p-3 bg-slate-50 rounded-xl outline-none mb-2">
-                            <option value="" disabled selected>--- เลือกหัวข้อ ---</option>
+                        <label class="text-[10px] font-bold text-slate-500 ml-1 mb-1 block uppercase">หัวข้อเรื่องเอกสาร</label>
+                        <select id="sel-subject" onchange="toggleOtherSubject(this.value)" required class="w-full p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 mb-2 transition-all">
+                            <option value="" disabled selected>--- เลือกหัวข้อที่ต้องการ ---</option>
                             <option value="เอกสารรายเดือน">เอกสารรายเดือน</option>
                             <option value="เอกสารปิดงบ">เอกสารปิดงบ</option>
-                            <option value="OTHER">อื่นๆ (ระบุเอง)</option>
+                            <option value="รับ/ส่ง เอกสาร RD">รับ/ส่ง เอกสาร RD</option>
+                            <option value="รับ/ส่ง เอกสาร DBD">รับ/ส่ง เอกสาร DBD</option>
+                            <option value="รับ/ส่ง เอกสาร SSO">รับ/ส่ง เอกสาร SSO</option>
+                            <option value="OTHER">อื่นๆ (ระบุหัวข้อใหม่)</option>
                         </select>
-                        <input type="text" id="inp-subject-other" placeholder="ระบุหัวข้อที่ต้องการ..." class="w-full p-3 border rounded-xl hide">
+                        <input type="text" id="inp-subject-other" placeholder="โปรดระบุหัวข้อที่ต้องการ..." class="w-full p-3 border-2 border-blue-50 rounded-xl hide focus:border-blue-400 outline-none">
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <input type="text" id="inp-sender" list="dept-list" placeholder="ผู้ส่ง/ลูกค้า" required class="w-full p-3 bg-slate-50 rounded-xl outline-none"><datalist id="dept-list"></datalist>
-                        <input type="text" id="inp-receiver" placeholder="ผู้รับ" required class="w-full p-3 bg-slate-50 rounded-xl outline-none">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 ml-1 mb-1 block uppercase">ผู้ส่ง/ลูกค้า</label>
+                            <input type="text" id="inp-sender" list="dept-list" placeholder="พิมพ์เพื่อค้นหา..." required class="w-full p-3 bg-slate-50 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                            <datalist id="dept-list"></datalist>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 ml-1 mb-1 block uppercase">เจ้าหน้าที่ผู้รับ</label>
+                            <input type="text" id="inp-receiver" required placeholder="ระบุชื่อผู้รับ" class="w-full p-3 bg-slate-50 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                        </div>
                     </div>
-                    <input type="email" id="inp-email" placeholder="อีเมลแจ้งเตือน (ถ้ามี)" class="w-full p-3 bg-slate-50 rounded-xl outline-none">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="p-2 border rounded-xl text-center"><label class="text-[10px] block text-slate-400">ไฟล์ (PDF)</label><input type="file" id="inp-file" class="text-[10px]"></div>
-                        <div class="p-2 border rounded-xl text-center"><label class="text-[10px] block text-slate-400">รูปถ่าย</label><input type="file" id="inp-photo" accept="image/*" onchange="processPhotoSelection(this)" class="text-[10px]"><div id="photo-preview-box" class="h-8 w-8 mx-auto mt-1 hide border rounded"></div></div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 ml-1 mb-1 block uppercase">อีเมลผู้รับการแจ้งเตือน</label>
+                        <input type="email" id="inp-email" placeholder="example@email.com" class="w-full p-3 bg-slate-50 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
                     </div>
-                    <div onclick="openModal('sig-modal')" class="sig-trigger-box">
-                        <div id="sig-placeholder" class="text-center text-slate-300 text-xs">แตะเพื่อลงลายมือชื่อ</div>
-                        <img id="sig-preview-img" class="hide">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                        <div class="p-3 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                            <label class="text-[10px] font-bold text-slate-400 block mb-2 uppercase tracking-wide">ไฟล์เอกสารหลัก (PDF)</label>
+                            <input type="file" id="inp-file" class="text-[10px] w-full file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:bg-blue-50 file:text-blue-600 file:font-bold">
+                        </div>
+                        <div class="p-3 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                            <label class="text-[10px] font-bold text-slate-400 block mb-2 uppercase tracking-wide">ภาพถ่ายหลักฐาน (JPG/PNG)</label>
+                            <input type="file" id="inp-photo" accept="image/*" onchange="processPhotoSelection(this)" class="text-[10px] w-full file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:bg-emerald-50 file:text-emerald-600 file:font-bold">
+                            <div id="photo-preview-box" class="h-10 w-10 mt-2 mx-auto hide border rounded-lg overflow-hidden shadow-inner"></div>
+                        </div>
                     </div>
-                    <input type="hidden" id="inp-sig-data">
-                    <div class="flex gap-3 pt-4">
-                        <button type="button" onclick="switchView('dashboard')" class="flex-1 py-4 bg-slate-100 rounded-2xl">ยกเลิก</button>
-                        <button type="submit" class="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-bold">บันทึกรายการ</button>
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-center ml-1">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">ลงลายมือชื่อทำรายการ</label>
+                            <button type="button" onclick="clearMainSignature()" class="text-[9px] text-red-500 font-bold underline">ล้างลายเซ็น</button>
+                        </div>
+                        <div onclick="openModal('sig-modal')" class="sig-trigger-box">
+                            <div id="sig-placeholder" class="text-center text-slate-400">
+                                <i data-lucide="pen-tool" class="w-8 h-8 mx-auto mb-1 text-slate-200"></i>
+                                <p class="text-[11px] font-bold">แตะเพื่อลงนามรับทราบ</p>
+                            </div>
+                            <img id="sig-preview-img" class="hide">
+                        </div>
+                        <input type="hidden" id="inp-sig-data">
+                    </div>
+                    <div class="flex gap-4 pt-4">
+                        <button type="button" onclick="switchView('dashboard')" class="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold hover:bg-slate-200 transition-all">ยกเลิก</button>
+                        <button type="submit" class="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transform hover:-translate-y-1 transition-all">บันทึกรายการ</button>
                     </div>
                 </form>
             </div>
@@ -210,14 +249,15 @@
     </div>
 
     <script>
+        // --- State Management ---
         let dataList = [], systemSettings = { companyName: 'E-Document', logoUrl: 'https://cdn-icons-png.flaticon.com/512/281/281760.png' };
-        let currentMode = 'dashboard', currentPage = 1, itemsPerPage = 15;
+        let currentMode = 'dashboard', currentPage = 1, itemsPerPage = 20;
         let mainSignaturePad = null, withdrawSignaturePad = null, capturedImage = null, currentWithdrawRow = null;
 
-        // --- Core Fetch Bridge ---
+        // --- Core Server Bridge (fetch API instead of google.script.run) ---
         async function callGAS(action, params = {}) {
-            if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes("exec")) { /* OK */ } else {
-                Swal.fire("Error", "กรุณาตั้งค่า URL Web App ในโค้ดก่อน", "error");
+            if (!GAS_WEB_APP_URL || !GAS_WEB_APP_URL.includes("exec")) {
+                Swal.fire("Configuration Error", "กรุณาตั้งค่า URL Web App ที่ได้จาก Google Apps Script ในโค้ดบรรทัดที่ 40 ก่อนใช้งานบน GitHub", "error");
                 return null;
             }
             try {
@@ -229,8 +269,7 @@
                 return result;
             } catch (err) {
                 console.error("GAS Connection Error:", err);
-                loading(false);
-                Swal.fire("Connection Error", "ไม่สามารถติดต่อ Server ได้ กรุณาลองใหม่อีกครั้ง", "error");
+                Swal.fire("Connection Error", "ไม่สามารถติดต่อ Server (Apps Script) ได้ กรุณาตรวจสอบสถานะ Web App Deployment", "error");
                 return null;
             }
         }
@@ -258,6 +297,7 @@
             document.querySelectorAll('#side-title, #mob-title').forEach(el => el.innerText = systemSettings.companyName);
         }
 
+        // --- Routing & Navigation ---
         function switchView(view) {
             currentMode = view;
             const area = document.getElementById('main-area');
@@ -267,9 +307,10 @@
 
             if (view.includes('list') || view === 'dashboard' || view === 'trash') {
                 area.innerHTML = document.getElementById('tpl-list').innerHTML;
-                const titles = { dashboard: 'รายการล่าสุด', list_all: 'เอกสารทั้งหมด', trash: 'ถังขยะ' };
+                const titles = { dashboard: 'รายการล่าสุด', list_all: 'คลังเอกสารทั้งหมด', trash: 'รายการจำหน่าย (ถังขยะ)' };
                 document.getElementById('list-head').innerText = titles[view] || 'รายการเอกสาร';
                 if(view === 'trash') document.getElementById('stats-bar').classList.add('hide');
+                
                 populateYearFilter();
                 resetAndRender();
                 updateStats();
@@ -282,6 +323,17 @@
             lucide.createIcons();
         }
 
+        function toggleSidebar() {
+            const sb = document.getElementById('main-sidebar'), ol = document.getElementById('sidebar-overlay');
+            if (sb.classList.contains('-translate-x-full')) {
+                sb.classList.remove('-translate-x-full'); ol.classList.remove('hidden');
+            } else {
+                sb.classList.add('-translate-x-full'); ol.classList.add('hidden');
+            }
+        }
+        function handleNavClick(v) { if(window.innerWidth < 768) toggleSidebar(); switchView(v); }
+
+        // --- Table & Filtering Logic ---
         function updateStats() {
             const counts = {
                 in: dataList.filter(d => d.status === 'active' && d.id.startsWith('IN')).length,
@@ -300,10 +352,7 @@
             filterYear.innerHTML = '<option value="all">ทุกปี พ.ศ.</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
         }
 
-        function resetAndRender() {
-            currentPage = 1;
-            renderFilteredTable();
-        }
+        function resetAndRender() { currentPage = 1; renderFilteredTable(); }
 
         function renderFilteredTable() {
             const tbody = document.getElementById('list-table');
@@ -321,84 +370,110 @@
             const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
             const pagedItems = filtered.slice((currentPage-1)*itemsPerPage, currentPage*itemsPerPage);
 
-            tbody.innerHTML = pagedItems.map(item => {
-                const isWithdrawn = !!(item.withdrawStatus && item.withdrawStatus.includes("เบิกแล้ว"));
-                return `
-                <tr class="hover:bg-slate-50 transition-all">
-                    <td class="p-4 font-bold text-blue-600">${item.id}<br><span class="text-[10px] text-slate-400 font-normal">${item.date}</span></td>
-                    <td class="p-4 font-medium truncate max-w-[200px]">${item.title}</td>
-                    <td class="p-4 text-[10px] text-slate-400">${item.sender} -> ${item.receiver}</td>
-                    <td class="p-4 text-center flex justify-center items-center gap-2">
-                        ${isWithdrawn ? '<div class="w-8 h-8 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center" title="เบิกแล้ว"><i data-lucide="package-check" class="w-4 h-4"></i></div>' : ''}
-                        <button onclick="showDetails(${item.rowNum})" class="p-2 bg-blue-50 text-blue-600 rounded-lg"><i data-lucide="eye" class="w-4 h-4"></i></button>
-                        ${item.status === 'active' 
-                           ? `<button onclick="updateDocStatus(${item.rowNum}, 'deleted')" class="p-2 bg-red-50 text-red-500 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`
-                           : `<button onclick="updateDocStatus(${item.rowNum}, 'active')" class="p-2 bg-green-50 text-green-600 rounded-lg"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>`
-                        }
-                    </td>
-                </tr>`;
-            }).join('');
-            
+            if(pagedItems.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="p-16 text-center text-slate-300 italic">ไม่พบข้อมูล</td></tr>';
+            } else {
+                tbody.innerHTML = pagedItems.map(item => {
+                    const isWithdrawn = !!(item.withdrawStatus && item.withdrawStatus.includes("เบิกแล้ว"));
+                    return `
+                    <tr class="hover:bg-blue-50/30 transition-all">
+                        <td class="p-4"><div class="font-bold text-blue-600">${item.id}</div><div class="text-[10px] text-slate-400 font-medium">${item.date}</div></td>
+                        <td class="p-4 font-medium max-w-[200px] truncate" title="${item.title}">${item.title}</td>
+                        <td class="p-4 text-[10px] text-slate-500 leading-tight">
+                            <span class="text-slate-300 font-bold uppercase">From:</span> ${item.sender}<br>
+                            <span class="text-slate-300 font-bold uppercase">To:</span> ${item.receiver}
+                        </td>
+                        <td class="p-4 text-center">
+                            <div class="flex justify-center items-center gap-2">
+                                ${isWithdrawn ? `<div class="w-8 h-8 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center shadow-sm" title="เบิกแล้ว: ${item.withdrawName}"><i data-lucide="package-check" class="w-4 h-4"></i></div>` : ''}
+                                <button onclick="showDetails(${item.rowNum})" class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all"><i data-lucide="eye" class="w-4 h-4"></i></button>
+                                ${item.status === 'active' 
+                                   ? `<button onclick="updateDocStatus(${item.rowNum}, 'deleted')" class="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`
+                                   : `<div class="flex gap-1">
+                                        <button onclick="updateDocStatus(${item.rowNum}, 'active')" class="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-all"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                                        <button onclick="permanentlyDelete(${item.rowNum})" class="p-2 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-700 hover:text-white transition-all"><i data-lucide="x-circle" class="w-4 h-4"></i></button>
+                                      </div>`
+                                }
+                            </div>
+                        </td>
+                    </tr>`;
+                }).join('');
+            }
             renderPagination(currentPage, totalPages);
             lucide.createIcons();
         }
 
         function renderPagination(curr, total) {
-            document.getElementById('pagination-info').innerText = `หน้า ${curr} จาก ${total}`;
+            document.getElementById('pagination-info').innerText = `แสดงหน้าที่ ${curr} จากทั้งหมด ${total} หน้า`;
             const nums = document.getElementById('page-numbers');
             let html = '';
             for(let i=1; i<=total; i++) {
-                const active = (i === curr) ? 'bg-blue-600 text-white' : 'bg-white text-slate-400 border';
-                html += `<button onclick="goToPage(${i})" class="page-btn text-[10px] font-bold ${active}">${i}</button>`;
+                const active = (i === curr) ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-400 border hover:bg-slate-50';
+                html += `<button onclick="goToPage(${i})" class="page-btn ${active}">${i}</button>`;
             }
             nums.innerHTML = html;
         }
         function goToPage(p) { currentPage = p; renderFilteredTable(); }
 
-        // --- Detail & Withdrawal ---
+        // --- Detail View & Withdrawal Modal ---
         function showDetails(rowNum) {
             const item = dataList.find(d => d.rowNum === rowNum);
             if(!item) return;
 
             const isWithdrawn = !!(item.withdrawName && item.withdrawName.trim());
-            const getThumb = url => (url && !url.includes('Error')) ? `https://drive.google.com/thumbnail?id=${url.match(/[-\w]{25,}/)}&sz=w800` : null;
+            const getThumb = url => {
+                if(!url || url.includes('Error')) return null;
+                const match = url.match(/[-\w]{25,}/);
+                return match ? `https://drive.google.com/thumbnail?id=${match[0]}&sz=w800` : null;
+            }
 
-            const html = `
+            const detailHtml = `
                 <div class="text-left text-sm space-y-4">
-                    <div class="bg-slate-50 p-4 rounded-2xl space-y-2">
-                        <div class="flex justify-between border-b pb-1"><span>เรื่อง:</span><span class="font-bold">${item.title}</span></div>
-                        <div class="flex justify-between border-b pb-1"><span>จาก:</span><span>${item.sender}</span></div>
-                        <div class="flex justify-between border-b pb-1"><span>ถึง:</span><span>${item.receiver}</span></div>
-                        <div class="flex justify-between"><span>วันที่:</span><span>${item.date}</span></div>
+                    <div class="bg-slate-50 p-6 rounded-3xl space-y-3 border">
+                        <div class="flex justify-between border-b pb-2"><span class="text-slate-400 font-bold text-[10px] uppercase">เรื่องเอกสาร</span><span class="font-bold text-right ml-4">${item.title}</span></div>
+                        <div class="flex justify-between border-b pb-2"><span class="text-slate-400 font-bold text-[10px] uppercase">ต้นทาง</span><span>${item.sender}</span></div>
+                        <div class="flex justify-between border-b pb-2"><span class="text-slate-400 font-bold text-[10px] uppercase">ผู้รับ</span><span>${item.receiver}</span></div>
+                        <div class="flex justify-between border-b pb-2"><span class="text-slate-400 font-bold text-[10px] uppercase">วันที่เอกสาร</span><span>${item.date}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400 font-bold text-[10px] uppercase">เวลาบันทึก</span><span class="text-[10px]">${item.timestamp}</span></div>
                     </div>
                     ${isWithdrawn ? `
-                        <div class="p-3 bg-orange-50 border border-orange-200 rounded-2xl">
-                            <p class="text-[10px] font-bold text-orange-500 mb-1">ข้อมูลการเบิก</p>
-                            <p><b>ผู้เบิก:</b> ${item.withdrawName}</p>
-                            <p class="text-[10px] text-slate-400">${item.withdrawStatus}</p>
-                            <div class="bg-white mt-2 p-2 rounded text-center">
-                                ${getThumb(item.withdrawSig) ? `<img src="${getThumb(item.withdrawSig)}" class="h-12 mx-auto">` : 'ไม่มีลายเซ็น'}
+                        <div class="p-4 bg-orange-50 border border-orange-200 rounded-3xl">
+                            <p class="text-[10px] font-bold text-orange-600 mb-2 uppercase tracking-widest flex items-center"><i data-lucide="info" class="w-3 h-3 mr-1"></i> ข้อมูลการเบิก</p>
+                            <p class="font-bold text-orange-800">ผู้เบิก: ${item.withdrawName}</p>
+                            <p class="text-[10px] text-slate-400 font-medium">วันที่เบิก: ${item.withdrawStatus}</p>
+                            <div class="bg-white mt-3 p-3 rounded-2xl border border-orange-100 shadow-inner flex justify-center">
+                                ${getThumb(item.withdrawSig) ? `<img src="${getThumb(item.withdrawSig)}" class="h-16">` : '<span class="text-slate-300 italic text-xs">ไม่พบไฟล์ลายเซ็น</span>'}
                             </div>
                         </div>
                     ` : ''}
                     <div class="grid grid-cols-2 gap-4">
-                        <div><p class="text-[10px] text-slate-400 mb-1">หลักฐานภาพ</p>${getThumb(item.photoUrl) ? `<img src="${getThumb(item.photoUrl)}" class="h-24 w-full object-cover rounded border">` : '<div class="h-24 bg-slate-100 rounded"></div>'}</div>
-                        <div><p class="text-[10px] text-slate-400 mb-1">ลายเซ็นรับ</p>${getThumb(item.sigUrl) ? `<img src="${getThumb(item.sigUrl)}" class="h-24 w-full object-contain rounded border">` : '<div class="h-24 bg-slate-100 rounded"></div>'}</div>
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-widest">รูปถ่ายหลักฐาน</p>
+                            ${getThumb(item.photoUrl) ? `<img src="${getThumb(item.photoUrl)}" class="h-32 w-full object-cover rounded-2xl border shadow-sm cursor-zoom-in" onclick="window.open('${item.photoUrl}')">` : '<div class="h-32 bg-slate-100 rounded-2xl flex items-center justify-center"><i data-lucide="image" class="text-slate-200"></i></div>'}
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-widest">ลายเซ็นตอนรับ</p>
+                            <div class="h-32 bg-white rounded-2xl border shadow-sm flex items-center justify-center p-2">
+                                ${getThumb(item.sigUrl) ? `<img src="${getThumb(item.sigUrl)}" class="max-h-full max-w-full">` : '<span class="text-slate-200 italic text-[10px]">ไม่พบ</span>'}
+                            </div>
+                        </div>
                     </div>
-                    ${item.fileUrl && !item.fileUrl.includes('Error') ? `<a href="${item.fileUrl}" target="_blank" class="block py-3 bg-blue-600 text-white text-center rounded-xl font-bold">เปิดดูเอกสารหลัก</a>` : ''}
-                    ${(!isWithdrawn && item.status === 'active') ? `<button onclick="openModal('withdraw-modal', ${item.rowNum})" class="w-full py-3 bg-orange-500 text-white rounded-xl font-bold">ทำรายการเบิกเอกสาร</button>` : ''}
+                    ${item.fileUrl && !item.fileUrl.includes('Error') ? `<a href="${item.fileUrl}" target="_blank" class="block py-4 bg-blue-50 text-blue-600 text-center rounded-2xl font-bold border border-blue-100 shadow-sm hover:bg-blue-100 transition-all flex items-center justify-center"><i data-lucide="file-text" class="w-4 h-4 mr-2"></i> เปิดดาวน์โหลดไฟล์ต้นฉบับ</a>` : ''}
+                    ${(!isWithdrawn && item.status === 'active' && item.id.includes('IN')) ? `<button onclick="openModal('withdraw-modal', ${item.rowNum})" class="w-full py-5 bg-orange-500 text-white rounded-2xl font-bold shadow-lg shadow-orange-200 hover:bg-orange-600 transform hover:-translate-y-1 transition-all flex items-center justify-center"><i data-lucide="hand-helping" class="w-5 h-5 mr-2"></i> ทำรายการเบิกเอกสารฉบับจริง</button>` : ''}
                 </div>
             `;
 
             Swal.fire({
-                title: `<span class="text-blue-600">${item.id}</span>`,
-                html: html,
-                showConfirmButton: false,
+                title: `<span class="text-blue-600 font-bold">${item.id}</span>`,
+                html: detailHtml,
+                width: '600px',
+                confirmButtonText: 'ปิดหน้าต่าง',
+                confirmButtonColor: '#3b82f6',
                 didOpen: () => lucide.createIcons()
             });
         }
 
-        // --- Modal & Pad Control ---
+        // --- Canvas & Signature Helpers ---
         function openModal(id, rowNum = null) {
             Swal.close();
             const modal = document.getElementById(id);
@@ -407,7 +482,7 @@
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
             canvas.width = canvas.offsetWidth * ratio;
             canvas.height = canvas.offsetHeight * ratio;
-            canvas.getContext("2d").scale(ratio, ratio);
+            canvas.getContext("2d").setTransform(ratio, 0, 0, ratio, 0, 0);
 
             if(id === 'sig-modal') {
                 if(!mainSignaturePad) mainSignaturePad = new SignaturePad(canvas);
@@ -422,52 +497,71 @@
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
         function saveSignatureFromModal() {
-            if(mainSignaturePad.isEmpty()) return;
+            if(mainSignaturePad.isEmpty()) { Swal.fire("คำเตือน", "กรุณาเซ็นชื่อก่อนกดยืนยัน", "warning"); return; }
             const data = mainSignaturePad.toDataURL();
             document.getElementById('inp-sig-data').value = data;
-            document.getElementById('sig-preview-img').src = data;
-            document.getElementById('sig-preview-img').classList.remove('hide');
+            const pImg = document.getElementById('sig-preview-img');
+            pImg.src = data; pImg.classList.remove('hide');
             document.getElementById('sig-placeholder').classList.add('hide');
             closeModal('sig-modal');
         }
 
         async function submitWithdraw() {
             const name = document.getElementById('withdraw-name').value;
-            if(!name || withdrawSignaturePad.isEmpty()) return Swal.fire("Warning", "กรุณาระบุข้อมูลให้ครบ", "warning");
-            loading(true, 'กำลังบันทึกการเบิก...');
-            const res = await callGAS("recordWithdrawal", { payload: { rowNum: currentWithdrawRow, withdrawName: name, withdrawSig: withdrawSignaturePad.toDataURL() }});
+            if(!name || name.trim() === "") { Swal.fire("คำเตือน", "กรุณาระบุชื่อผู้เบิกเอกสาร", "warning"); return; }
+            if(withdrawSignaturePad.isEmpty()) { Swal.fire("คำเตือน", "กรุณาลงลายมือชื่อผู้เบิก", "warning"); return; }
+
+            loading(true, 'กำลังบันทึกข้อมูลการเบิก...');
+            const payload = { rowNum: currentWithdrawRow, withdrawName: name, withdrawSig: withdrawSignaturePad.toDataURL() };
+            const res = await callGAS("recordWithdrawal", { payload });
             loading(false);
             if(res && res.success) {
                 closeModal('withdraw-modal');
-                Swal.fire("Success", "เบิกเอกสารเรียบร้อย", "success").then(refreshData);
+                Swal.fire("สำเร็จ", "บันทึกการเบิกเรียบร้อยแล้ว", "success").then(refreshData);
             }
         }
 
-        // --- Form Submission ---
+        // --- Form Submission Logic ---
         async function initEntryForm(type) {
-            document.getElementById('form-title-text').innerText = (type === 'IN' ? 'ลงทะเบียนรับเอกสาร' : 'บันทึกการส่งเอกสาร');
-            document.getElementById('form-icon-box').innerHTML = `<i data-lucide="${type === 'IN' ? 'download-cloud' : 'upload-cloud'}"></i>`;
+            document.getElementById('form-title-text').innerText = (type === 'IN' ? 'ลงทะเบียนรับเอกสารเข้า' : 'บันทึกการส่งออกเอกสาร');
+            document.getElementById('form-icon-box').innerHTML = `<i data-lucide="${type === 'IN' ? 'download-cloud' : 'upload-cloud'}" class="w-8 h-8"></i>`;
             document.getElementById('inp-date').valueAsDate = new Date();
+            
+            // Get Auto ID
             const id = await callGAS("generateNextId", { prefix: type });
             if(id) document.getElementById('inp-id').value = id;
+            
+            // Get Datalist
             const depts = await callGAS("getDepartments");
-            if(depts) document.getElementById('dept-list').innerHTML = depts.map(d => `<option value="${d}">`).join('');
+            if(depts) {
+                document.getElementById('dept-list').innerHTML = depts.map(d => `<option value="${d}">`).join('');
+            }
             lucide.createIcons();
         }
 
         function toggleOtherSubject(val) {
-            document.getElementById('inp-subject-other').classList.toggle('hide', val !== 'OTHER');
+            const otherInp = document.getElementById('inp-subject-other');
+            if(val === 'OTHER') {
+                otherInp.classList.remove('hide'); otherInp.required = true;
+            } else {
+                otherInp.classList.add('hide'); otherInp.required = false; otherInp.value = '';
+            }
         }
 
         async function handleFormSubmit(e) {
             e.preventDefault();
             const sig = document.getElementById('inp-sig-data').value;
-            if(!sig) return Swal.fire("Warning", "กรุณาลงลายมือชื่อ", "warning");
+            if(!sig) { Swal.fire("คำเตือน", "กรุณาลงลายมือชื่อยืนยันการทำรายการ", "warning"); return; }
 
-            loading(true, 'กำลังบันทึกข้อมูล...');
-            const selectVal = document.getElementById('sel-subject').value;
-            const finalTitle = selectVal === 'OTHER' ? document.getElementById('inp-subject-other').value : selectVal;
+            loading(true, 'กำลังส่งข้อมูลบันทึกลง Google Sheets...');
             
+            const selVal = document.getElementById('sel-subject').value;
+            const finalTitle = selVal === 'OTHER' ? document.getElementById('inp-subject-other').value : selVal;
+            
+            // Process Date to Thai Format (dd/mm/yyyy+543)
+            const dVal = document.getElementById('inp-date').value.split('-');
+            const formattedDate = `${dVal[2]}/${dVal[1]}/${parseInt(dVal[0])+543}`;
+
             const fileEl = document.getElementById('inp-file');
             let fileData = null, fileName = "";
             if (fileEl.files[0]) {
@@ -477,7 +571,7 @@
 
             const payload = {
                 id: document.getElementById('inp-id').value,
-                docDate: document.getElementById('inp-date').value.split('-').reverse().join('/'),
+                docDate: formattedDate,
                 title: finalTitle,
                 sender: document.getElementById('inp-sender').value,
                 receiver: document.getElementById('inp-receiver').value,
@@ -490,59 +584,104 @@
             const res = await callGAS("processSubmission", { payload });
             loading(false);
             if(res && res.success) {
-                Swal.fire("สำเร็จ", "บันทึกข้อมูลเรียบร้อย", "success").then(() => {
+                Swal.fire("สำเร็จ", "บันทึกข้อมูลเอกสารเรียบร้อยแล้ว", "success").then(() => {
                     switchView('dashboard');
                     refreshData();
                 });
+            } else {
+                Swal.fire("Error", res ? res.message : "ไม่ทราบสาเหตุ", "error");
             }
         }
 
-        // --- Other Actions ---
+        // --- Management Actions ---
         async function updateDocStatus(rowNum, status) {
-            loading(true);
-            await callGAS("updateStatus", { rowNum, status });
-            refreshData();
+            const confirm = await Swal.fire({
+                title: status === 'deleted' ? 'ย้ายลงถังขยะ?' : 'กู้คืนเอกสาร?',
+                icon: 'warning', showCancelButton: true, confirmButtonText: 'ยืนยัน'
+            });
+            if(!confirm.isConfirmed) return;
+
+            loading(true, 'กำลังปรับปรุงสถานะ...');
+            const res = await callGAS("updateStatus", { rowNum, status });
+            if(res && res.success) refreshData();
+            else loading(false);
+        }
+
+        async function permanentlyDelete(rowNum) {
+            const confirm = await Swal.fire({
+                title: 'ลบถาวร?',
+                text: 'คุณจะไม่สามารถกู้คืนข้อมูลนี้ได้อีก!',
+                icon: 'error', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบข้อมูล'
+            });
+            if(!confirm.isConfirmed) return;
+
+            loading(true, 'กำลังลบข้อมูลถาวร...');
+            const res = await callGAS("hardDelete", { rowNum });
+            if(res && res.success) refreshData();
+            else loading(false);
         }
 
         function renderSettingsUI() {
             const area = document.getElementById('main-area');
             area.innerHTML = `
-                <div class="max-w-xl mx-auto bg-white p-8 rounded-3xl shadow-xl border">
-                    <h2 class="text-xl font-bold mb-6">ตั้งค่าระบบ</h2>
-                    <div class="space-y-4">
-                        <input type="text" id="set-name" value="${systemSettings.companyName}" placeholder="ชื่อหน่วยงาน" class="w-full p-4 bg-slate-50 rounded-xl border-none outline-none">
-                        <input type="text" id="set-logo" value="${systemSettings.logoUrl}" placeholder="ลิงก์โลโก้ (URL)" class="w-full p-4 bg-slate-50 rounded-xl border-none outline-none">
-                        <button onclick="saveAppSettings()" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold">บันทึกการตั้งค่า</button>
+                <div class="max-w-xl mx-auto bg-white p-10 rounded-[2.5rem] shadow-xl border">
+                    <h2 class="text-2xl font-bold mb-8 flex items-center text-slate-700"><i data-lucide="settings" class="mr-3 text-blue-500"></i> ตั้งค่าระบบ</h2>
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">ชื่อหน่วยงาน / บริษัท</label>
+                            <input type="text" id="set-name" value="${systemSettings.companyName || ''}" class="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">ลิงก์โลโก้ (URL รูปภาพ)</label>
+                            <input type="text" id="set-logo" value="${systemSettings.logoUrl || ''}" class="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 font-bold text-slate-700 outline-none">
+                        </div>
+                        <button onclick="saveAppSettings()" class="w-full py-5 bg-blue-600 text-white rounded-3xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transform hover:-translate-y-1 transition-all">บันทึกการตั้งค่า</button>
                     </div>
                 </div>`;
+            lucide.createIcons();
         }
 
         async function saveAppSettings() {
-            const s = { companyName: document.getElementById('set-name').value, logoUrl: document.getElementById('set-logo').value };
-            loading(true);
-            await callGAS("saveSettings", { settings: s });
-            refreshData();
-            Swal.fire("สำเร็จ", "บันทึกเรียบร้อย", "success");
+            const settings = { 
+                companyName: document.getElementById('set-name').value, 
+                logoUrl: document.getElementById('set-logo').value 
+            };
+            loading(true, 'กำลังบันทึกตั้งค่า...');
+            const res = await callGAS("saveSettings", { settings });
+            if(res && res.success) {
+                Swal.fire("สำเร็จ", "บันทึกการตั้งค่าระบบเรียบร้อย", "success").then(refreshData);
+            } else loading(false);
         }
 
-        // --- Helpers ---
-        function toggleSidebar() {
-            document.getElementById('main-sidebar').classList.toggle('-translate-x-full');
-            document.getElementById('sidebar-overlay').classList.toggle('hidden');
-        }
-        function handleNavClick(v) { if(window.innerWidth < 768) toggleSidebar(); switchView(v); }
+        // --- Helper Utilities ---
         async function processPhotoSelection(input) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     capturedImage = e.target.result;
-                    document.getElementById('photo-preview-box').innerHTML = `<img src="${capturedImage}" class="h-full w-full object-cover">`;
-                    document.getElementById('photo-preview-box').classList.remove('hide');
+                    const preview = document.getElementById('photo-preview-box');
+                    preview.innerHTML = `<img src="${capturedImage}" class="h-full w-full object-cover">`;
+                    preview.classList.remove('hide');
                 };
                 reader.readAsDataURL(input.files[0]);
             }
         }
-        function fileToBase64(f) { return new Promise((r, j) => { const rd = new FileReader(); rd.readAsDataURL(f); rd.onload = () => r(rd.result); rd.onerror = e => j(e); }); }
+
+        function clearMainSignature() {
+            document.getElementById('inp-sig-data').value = '';
+            document.getElementById('sig-preview-img').classList.add('hide');
+            document.getElementById('sig-placeholder').classList.remove('hide');
+            if(mainSignaturePad) mainSignaturePad.clear();
+        }
+
+        function fileToBase64(f) { 
+            return new Promise((r, j) => { 
+                const rd = new FileReader(); 
+                rd.readAsDataURL(f); 
+                rd.onload = () => r(rd.result); 
+                rd.onerror = e => j(e); 
+            }); 
+        }
 
         window.onload = () => { refreshData(); lucide.createIcons(); };
     </script>
