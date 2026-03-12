@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Document Enterprise V5.2 (GitHub Full)</title>
+    <title>E-Document Enterprise V5.3 (GitHub Full)</title>
     <!-- CSS & Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -39,7 +39,7 @@
     <div id="loading" class="fixed inset-0 z-[9999] flex items-center justify-center bg-white/90">
         <div class="flex flex-col items-center">
             <div class="loader-spin rounded-full border-4 border-slate-200 h-14 w-14 mb-4"></div>
-            <p id="loading-text" class="text-slate-500 font-medium">กำลังเชื่อมต่อกับ Server...</p>
+            <p id="loading-text" class="text-slate-500 font-medium text-sm">กำลังเชื่อมต่อกับ Server...</p>
         </div>
     </div>
 
@@ -130,29 +130,29 @@
         <div id="tpl-list">
             <div id="stats-bar" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 <div class="bg-white p-5 rounded-2xl shadow-sm border-l-4 border-blue-500">
-                    <p class="text-slate-400 text-xs">รับเข้า (Inbound)</p>
+                    <p class="text-slate-400 text-xs font-bold">รับเข้า (Inbound)</p>
                     <h3 id="stat-in" class="text-2xl font-bold text-slate-700">0</h3>
                 </div>
                 <div class="bg-indigo-500 text-white p-5 rounded-2xl shadow-sm">
-                    <p class="text-white/70 text-xs">ส่งออก (Outbound)</p>
+                    <p class="text-white/70 text-xs font-bold">ส่งออก (Outbound)</p>
                     <h3 id="stat-out" class="text-2xl font-bold">0</h3>
                 </div>
                 <div class="bg-white p-5 rounded-2xl shadow-sm border-l-4 border-slate-400">
-                    <p class="text-slate-400 text-xs">จำหน่ายแล้ว (Trash)</p>
+                    <p class="text-slate-400 text-xs font-bold">จำหน่ายแล้ว (Trash)</p>
                     <h3 id="stat-del" class="text-2xl font-bold text-slate-700">0</h3>
                 </div>
             </div>
             
             <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
-                <div class="p-4 border-b flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div class="p-4 border-b flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-slate-50/50">
                     <h2 id="list-head" class="font-bold text-slate-700 text-lg">รายการเอกสาร</h2>
                     <div class="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
-                        <select id="filter-year" onchange="resetAndRender()" class="px-3 py-2 bg-slate-50 border-none rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-400">
+                        <select id="filter-year" onchange="resetAndRender()" class="px-3 py-2 bg-white border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-400 border">
                             <option value="all">ปี พ.ศ. ทั้งหมด</option>
                         </select>
                         <div class="relative flex-1 lg:w-64">
                             <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-300"></i>
-                            <input type="text" id="filter-search" onkeyup="resetAndRender()" placeholder="ค้นหาเลขที่, เรื่อง, ชื่อ..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-400">
+                            <input type="text" id="filter-search" onkeyup="resetAndRender()" placeholder="ค้นหาเลขที่, เรื่อง, ชื่อ..." class="w-full pl-9 pr-4 py-2 bg-white border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-400 border">
                         </div>
                     </div>
                 </div>
@@ -161,7 +161,7 @@
                         <thead class="bg-slate-50 text-slate-400 text-[10px] uppercase font-bold tracking-widest border-b">
                             <tr><th class="p-4">เลขที่ / วันที่</th><th class="p-4">เรื่อง / รายละเอียด</th><th class="p-4">ผู้ส่ง - ผู้รับ</th><th class="p-4 text-center">จัดการ</th></tr>
                         </thead>
-                        <tbody id="list-table" class="divide-y text-sm"></tbody>
+                        <tbody id="list-table" class="divide-y text-sm bg-white"></tbody>
                     </table>
                 </div>
                 <div class="p-4 bg-slate-50 border-t flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -254,10 +254,10 @@
         let currentMode = 'dashboard', currentPage = 1, itemsPerPage = 20;
         let mainSignaturePad = null, withdrawSignaturePad = null, capturedImage = null, currentWithdrawRow = null;
 
-        // --- Core Server Bridge (fetch API instead of google.script.run) ---
+        // --- Core Server Bridge ---
         async function callGAS(action, params = {}) {
             if (!GAS_WEB_APP_URL || !GAS_WEB_APP_URL.includes("exec")) {
-                Swal.fire("Configuration Error", "กรุณาตั้งค่า URL Web App ที่ได้จาก Google Apps Script ในโค้ดบรรทัดที่ 40 ก่อนใช้งานบน GitHub", "error");
+                Swal.fire("Configuration Error", "กรุณาตั้งค่า URL Web App ในโค้ดบรรทัดที่ 40 ก่อนใช้งาน", "error");
                 return null;
             }
             try {
@@ -265,35 +265,42 @@
                     method: "POST",
                     body: JSON.stringify({ action, ...params })
                 });
-                const result = await response.json();
-                return result;
+                if (!response.ok) throw new Error("Network response was not ok");
+                return await response.json();
             } catch (err) {
                 console.error("GAS Connection Error:", err);
-                Swal.fire("Connection Error", "ไม่สามารถติดต่อ Server (Apps Script) ได้ กรุณาตรวจสอบสถานะ Web App Deployment", "error");
                 return null;
             }
         }
 
         function loading(show, text) {
-            document.getElementById('loading').style.display = show ? 'flex' : 'none';
-            if(text) document.getElementById('loading-text').innerText = text;
+            const el = document.getElementById('loading');
+            if (el) el.style.display = show ? 'flex' : 'none';
+            const txt = document.getElementById('loading-text');
+            if (txt && text) txt.innerText = text;
         }
 
         // --- Data Handling ---
         async function refreshData() {
             loading(true, 'กำลังโหลดข้อมูลจาก Google Sheets...');
-            const res = await callGAS("getFullData");
-            if (res) {
-                dataList = res.list || [];
-                systemSettings = res.settings || systemSettings;
-                applySystemSettings();
-                switchView(currentMode);
+            try {
+                const res = await callGAS("getFullData");
+                if (res) {
+                    dataList = res.list || [];
+                    systemSettings = res.settings || systemSettings;
+                    applySystemSettings();
+                    switchView(currentMode);
+                } else {
+                    Swal.fire("Error", "ไม่สามารถดึงข้อมูลได้ กรุณาลองใหม่อีกครั้ง", "error");
+                }
+            } finally {
+                loading(false); // มั่นใจว่า Loading จะปิดตัวเสมอ
             }
-            loading(false);
         }
 
         function applySystemSettings() {
-            document.getElementById('side-logo').src = systemSettings.logoUrl;
+            const sideLogo = document.getElementById('side-logo');
+            if (sideLogo) sideLogo.src = systemSettings.logoUrl;
             document.querySelectorAll('#side-title, #mob-title').forEach(el => el.innerText = systemSettings.companyName);
         }
 
@@ -309,7 +316,10 @@
                 area.innerHTML = document.getElementById('tpl-list').innerHTML;
                 const titles = { dashboard: 'รายการล่าสุด', list_all: 'คลังเอกสารทั้งหมด', trash: 'รายการจำหน่าย (ถังขยะ)' };
                 document.getElementById('list-head').innerText = titles[view] || 'รายการเอกสาร';
-                if(view === 'trash') document.getElementById('stats-bar').classList.add('hide');
+                if(view === 'trash') {
+                    const stats = document.getElementById('stats-bar');
+                    if(stats) stats.classList.add('hide');
+                }
                 
                 populateYearFilter();
                 resetAndRender();
@@ -325,10 +335,10 @@
 
         function toggleSidebar() {
             const sb = document.getElementById('main-sidebar'), ol = document.getElementById('sidebar-overlay');
-            if (sb.classList.contains('-translate-x-full')) {
-                sb.classList.remove('-translate-x-full'); ol.classList.remove('hidden');
-            } else {
-                sb.classList.add('-translate-x-full'); ol.classList.add('hidden');
+            if (sb && sb.classList.contains('-translate-x-full')) {
+                sb.classList.remove('-translate-x-full'); if(ol) ol.classList.remove('hidden');
+            } else if (sb) {
+                sb.classList.add('-translate-x-full'); if(ol) ol.classList.add('hidden');
             }
         }
         function handleNavClick(v) { if(window.innerWidth < 768) toggleSidebar(); switchView(v); }
@@ -336,13 +346,14 @@
         // --- Table & Filtering Logic ---
         function updateStats() {
             const counts = {
-                in: dataList.filter(d => d.status === 'active' && d.id.startsWith('IN')).length,
-                out: dataList.filter(d => d.status === 'active' && d.id.startsWith('OUT')).length,
-                del: dataList.filter(d => d.status === 'deleted').length
+                in: dataList.filter(d => (d.status || "").trim().toLowerCase() === 'active' && (d.id || "").startsWith('IN')).length,
+                out: dataList.filter(d => (d.status || "").trim().toLowerCase() === 'active' && (d.id || "").startsWith('OUT')).length,
+                del: dataList.filter(d => (d.status || "").trim().toLowerCase() === 'deleted').length
             };
-            document.getElementById('stat-in').innerText = counts.in;
-            document.getElementById('stat-out').innerText = counts.out;
-            document.getElementById('stat-del').innerText = counts.del;
+            const sIn = document.getElementById('stat-in'), sOut = document.getElementById('stat-out'), sDel = document.getElementById('stat-del');
+            if(sIn) sIn.innerText = counts.in;
+            if(sOut) sOut.innerText = counts.out;
+            if(sDel) sDel.innerText = counts.del;
         }
 
         function populateYearFilter() {
@@ -356,12 +367,15 @@
 
         function renderFilteredTable() {
             const tbody = document.getElementById('list-table');
-            const search = (document.getElementById('filter-search')?.value || "").toLowerCase();
+            if(!tbody) return;
+            const search = (document.getElementById('filter-search')?.value || "").toLowerCase().trim();
             const year = document.getElementById('filter-year')?.value || "all";
 
+            // ปรับปรุง Logic การกรอง: ใช้ .trim() เพื่อป้องกันช่องว่างใน Spreadsheet
             let filtered = dataList.filter(item => {
-                if (currentMode === 'trash') return item.status === 'deleted';
-                return item.status === 'active';
+                const status = (item.status || "").trim().toLowerCase();
+                if (currentMode === 'trash') return status === 'deleted';
+                return status === 'active'; // เฉพาะ 'active' เท่านั้นที่จะแสดงใน All Documents และ Dashboard
             });
 
             if(year !== "all") filtered = filtered.filter(d => (d.date || "").includes(year));
@@ -375,6 +389,7 @@
             } else {
                 tbody.innerHTML = pagedItems.map(item => {
                     const isWithdrawn = !!(item.withdrawStatus && item.withdrawStatus.includes("เบิกแล้ว"));
+                    const status = (item.status || "").trim().toLowerCase();
                     return `
                     <tr class="hover:bg-blue-50/30 transition-all">
                         <td class="p-4"><div class="font-bold text-blue-600">${item.id}</div><div class="text-[10px] text-slate-400 font-medium">${item.date}</div></td>
@@ -387,7 +402,7 @@
                             <div class="flex justify-center items-center gap-2">
                                 ${isWithdrawn ? `<div class="w-8 h-8 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center shadow-sm" title="เบิกแล้ว: ${item.withdrawName}"><i data-lucide="package-check" class="w-4 h-4"></i></div>` : ''}
                                 <button onclick="showDetails(${item.rowNum})" class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all"><i data-lucide="eye" class="w-4 h-4"></i></button>
-                                ${item.status === 'active' 
+                                ${status === 'active' 
                                    ? `<button onclick="updateDocStatus(${item.rowNum}, 'deleted')" class="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`
                                    : `<div class="flex gap-1">
                                         <button onclick="updateDocStatus(${item.rowNum}, 'active')" class="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-all"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
@@ -404,8 +419,10 @@
         }
 
         function renderPagination(curr, total) {
-            document.getElementById('pagination-info').innerText = `แสดงหน้าที่ ${curr} จากทั้งหมด ${total} หน้า`;
+            const info = document.getElementById('pagination-info');
+            if(info) info.innerText = `แสดงหน้าที่ ${curr} จากทั้งหมด ${total} หน้า`;
             const nums = document.getElementById('page-numbers');
+            if(!nums) return;
             let html = '';
             for(let i=1; i<=total; i++) {
                 const active = (i === curr) ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-400 border hover:bg-slate-50';
@@ -459,7 +476,7 @@
                         </div>
                     </div>
                     ${item.fileUrl && !item.fileUrl.includes('Error') ? `<a href="${item.fileUrl}" target="_blank" class="block py-4 bg-blue-50 text-blue-600 text-center rounded-2xl font-bold border border-blue-100 shadow-sm hover:bg-blue-100 transition-all flex items-center justify-center"><i data-lucide="file-text" class="w-4 h-4 mr-2"></i> เปิดดาวน์โหลดไฟล์ต้นฉบับ</a>` : ''}
-                    ${(!isWithdrawn && item.status === 'active' && item.id.includes('IN')) ? `<button onclick="openModal('withdraw-modal', ${item.rowNum})" class="w-full py-5 bg-orange-500 text-white rounded-2xl font-bold shadow-lg shadow-orange-200 hover:bg-orange-600 transform hover:-translate-y-1 transition-all flex items-center justify-center"><i data-lucide="hand-helping" class="w-5 h-5 mr-2"></i> ทำรายการเบิกเอกสารฉบับจริง</button>` : ''}
+                    ${(!isWithdrawn && (item.status || "").trim().toLowerCase() === 'active' && item.id.includes('IN')) ? `<button onclick="openModal('withdraw-modal', ${item.rowNum})" class="w-full py-5 bg-orange-500 text-white rounded-2xl font-bold shadow-lg shadow-orange-200 hover:bg-orange-600 transform hover:-translate-y-1 transition-all flex items-center justify-center"><i data-lucide="hand-helping" class="w-5 h-5 mr-2"></i> ทำรายการเบิกเอกสารฉบับจริง</button>` : ''}
                 </div>
             `;
 
@@ -477,8 +494,10 @@
         function openModal(id, rowNum = null) {
             Swal.close();
             const modal = document.getElementById(id);
+            if(!modal) return;
             modal.style.display = 'flex';
             const canvas = (id === 'sig-modal') ? document.getElementById('sig-canvas-main') : document.getElementById('withdraw-canvas');
+            if(!canvas) return;
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
             canvas.width = canvas.offsetWidth * ratio;
             canvas.height = canvas.offsetHeight * ratio;
@@ -491,23 +510,26 @@
                 currentWithdrawRow = rowNum;
                 if(!withdrawSignaturePad) withdrawSignaturePad = new SignaturePad(canvas);
                 withdrawSignaturePad.clear();
-                document.getElementById('withdraw-name').value = '';
+                const nameInp = document.getElementById('withdraw-name');
+                if(nameInp) nameInp.value = '';
             }
         }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function closeModal(id) { const modal = document.getElementById(id); if(modal) modal.style.display = 'none'; }
 
         function saveSignatureFromModal() {
             if(mainSignaturePad.isEmpty()) { Swal.fire("คำเตือน", "กรุณาเซ็นชื่อก่อนกดยืนยัน", "warning"); return; }
             const data = mainSignaturePad.toDataURL();
-            document.getElementById('inp-sig-data').value = data;
+            const sigInp = document.getElementById('inp-sig-data');
+            if(sigInp) sigInp.value = data;
             const pImg = document.getElementById('sig-preview-img');
-            pImg.src = data; pImg.classList.remove('hide');
-            document.getElementById('sig-placeholder').classList.add('hide');
+            if(pImg) { pImg.src = data; pImg.classList.remove('hide'); }
+            const pPlace = document.getElementById('sig-placeholder');
+            if(pPlace) pPlace.classList.add('hide');
             closeModal('sig-modal');
         }
 
         async function submitWithdraw() {
-            const name = document.getElementById('withdraw-name').value;
+            const name = document.getElementById('withdraw-name')?.value;
             if(!name || name.trim() === "") { Swal.fire("คำเตือน", "กรุณาระบุชื่อผู้เบิกเอกสาร", "warning"); return; }
             if(withdrawSignaturePad.isEmpty()) { Swal.fire("คำเตือน", "กรุณาลงลายมือชื่อผู้เบิก", "warning"); return; }
 
@@ -523,59 +545,64 @@
 
         // --- Form Submission Logic ---
         async function initEntryForm(type) {
-            document.getElementById('form-title-text').innerText = (type === 'IN' ? 'ลงทะเบียนรับเอกสารเข้า' : 'บันทึกการส่งออกเอกสาร');
-            document.getElementById('form-icon-box').innerHTML = `<i data-lucide="${type === 'IN' ? 'download-cloud' : 'upload-cloud'}" class="w-8 h-8"></i>`;
-            document.getElementById('inp-date').valueAsDate = new Date();
+            const fTitle = document.getElementById('form-title-text'), fIcon = document.getElementById('form-icon-box'), iDate = document.getElementById('inp-date');
+            if(fTitle) fTitle.innerText = (type === 'IN' ? 'ลงทะเบียนรับเอกสารเข้า' : 'บันทึกการส่งออกเอกสาร');
+            if(fIcon) fIcon.innerHTML = `<i data-lucide="${type === 'IN' ? 'download-cloud' : 'upload-cloud'}" class="w-8 h-8"></i>`;
+            if(iDate) iDate.valueAsDate = new Date();
             
             // Get Auto ID
             const id = await callGAS("generateNextId", { prefix: type });
-            if(id) document.getElementById('inp-id').value = id;
+            const idInp = document.getElementById('inp-id');
+            if(id && idInp) idInp.value = id;
             
             // Get Datalist
             const depts = await callGAS("getDepartments");
-            if(depts) {
-                document.getElementById('dept-list').innerHTML = depts.map(d => `<option value="${d}">`).join('');
+            const dList = document.getElementById('dept-list');
+            if(depts && dList) {
+                dList.innerHTML = depts.map(d => `<option value="${d}">`).join('');
             }
             lucide.createIcons();
         }
 
         function toggleOtherSubject(val) {
             const otherInp = document.getElementById('inp-subject-other');
-            if(val === 'OTHER') {
-                otherInp.classList.remove('hide'); otherInp.required = true;
-            } else {
-                otherInp.classList.add('hide'); otherInp.required = false; otherInp.value = '';
+            if(otherInp) {
+                if(val === 'OTHER') {
+                    otherInp.classList.remove('hide'); otherInp.required = true;
+                } else {
+                    otherInp.classList.add('hide'); otherInp.required = false; otherInp.value = '';
+                }
             }
         }
 
         async function handleFormSubmit(e) {
             e.preventDefault();
-            const sig = document.getElementById('inp-sig-data').value;
+            const sig = document.getElementById('inp-sig-data')?.value;
             if(!sig) { Swal.fire("คำเตือน", "กรุณาลงลายมือชื่อยืนยันการทำรายการ", "warning"); return; }
 
             loading(true, 'กำลังส่งข้อมูลบันทึกลง Google Sheets...');
             
-            const selVal = document.getElementById('sel-subject').value;
-            const finalTitle = selVal === 'OTHER' ? document.getElementById('inp-subject-other').value : selVal;
+            const selVal = document.getElementById('sel-subject')?.value;
+            const otherSubject = document.getElementById('inp-subject-other')?.value;
+            const finalTitle = selVal === 'OTHER' ? otherSubject : selVal;
             
-            // Process Date to Thai Format (dd/mm/yyyy+543)
-            const dVal = document.getElementById('inp-date').value.split('-');
+            const dVal = document.getElementById('inp-date')?.value.split('-');
             const formattedDate = `${dVal[2]}/${dVal[1]}/${parseInt(dVal[0])+543}`;
 
             const fileEl = document.getElementById('inp-file');
             let fileData = null, fileName = "";
-            if (fileEl.files[0]) {
+            if (fileEl?.files[0]) {
                 fileData = await fileToBase64(fileEl.files[0]);
                 fileName = fileEl.files[0].name;
             }
 
             const payload = {
-                id: document.getElementById('inp-id').value,
+                id: document.getElementById('inp-id')?.value,
                 docDate: formattedDate,
                 title: finalTitle,
-                sender: document.getElementById('inp-sender').value,
-                receiver: document.getElementById('inp-receiver').value,
-                emailRecipient: document.getElementById('inp-email').value,
+                sender: document.getElementById('inp-sender')?.value,
+                receiver: document.getElementById('inp-receiver')?.value,
+                emailRecipient: document.getElementById('inp-email')?.value,
                 fileData, fileName,
                 photoData: capturedImage,
                 sigData: sig
@@ -597,32 +624,45 @@
         async function updateDocStatus(rowNum, status) {
             const confirm = await Swal.fire({
                 title: status === 'deleted' ? 'ย้ายลงถังขยะ?' : 'กู้คืนเอกสาร?',
-                icon: 'warning', showCancelButton: true, confirmButtonText: 'ยืนยัน'
+                icon: 'warning', showCancelButton: true, confirmButtonText: 'ยืนยัน', cancelButtonText: 'ยกเลิก'
             });
             if(!confirm.isConfirmed) return;
 
             loading(true, 'กำลังปรับปรุงสถานะ...');
-            const res = await callGAS("updateStatus", { rowNum, status });
-            if(res && res.success) refreshData();
-            else loading(false);
+            try {
+                const res = await callGAS("updateStatus", { rowNum, status });
+                if(res && res.success) {
+                    await refreshData();
+                } else {
+                    Swal.fire("Error", "ไม่สามารถอัปเดตสถานะได้", "error");
+                }
+            } finally {
+                loading(false);
+            }
         }
 
         async function permanentlyDelete(rowNum) {
             const confirm = await Swal.fire({
                 title: 'ลบถาวร?',
                 text: 'คุณจะไม่สามารถกู้คืนข้อมูลนี้ได้อีก!',
-                icon: 'error', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบข้อมูล'
+                icon: 'error', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบข้อมูล', cancelButtonText: 'ยกเลิก'
             });
             if(!confirm.isConfirmed) return;
 
             loading(true, 'กำลังลบข้อมูลถาวร...');
-            const res = await callGAS("hardDelete", { rowNum });
-            if(res && res.success) refreshData();
-            else loading(false);
+            try {
+                const res = await callGAS("hardDelete", { rowNum });
+                if(res && res.success) {
+                    await refreshData();
+                }
+            } finally {
+                loading(false);
+            }
         }
 
         function renderSettingsUI() {
             const area = document.getElementById('main-area');
+            if(!area) return;
             area.innerHTML = `
                 <div class="max-w-xl mx-auto bg-white p-10 rounded-[2.5rem] shadow-xl border">
                     <h2 class="text-2xl font-bold mb-8 flex items-center text-slate-700"><i data-lucide="settings" class="mr-3 text-blue-500"></i> ตั้งค่าระบบ</h2>
@@ -643,14 +683,15 @@
 
         async function saveAppSettings() {
             const settings = { 
-                companyName: document.getElementById('set-name').value, 
-                logoUrl: document.getElementById('set-logo').value 
+                companyName: document.getElementById('set-name')?.value, 
+                logoUrl: document.getElementById('set-logo')?.value 
             };
             loading(true, 'กำลังบันทึกตั้งค่า...');
             const res = await callGAS("saveSettings", { settings });
+            loading(false);
             if(res && res.success) {
                 Swal.fire("สำเร็จ", "บันทึกการตั้งค่าระบบเรียบร้อย", "success").then(refreshData);
-            } else loading(false);
+            }
         }
 
         // --- Helper Utilities ---
@@ -660,17 +701,22 @@
                 reader.onload = (e) => {
                     capturedImage = e.target.result;
                     const preview = document.getElementById('photo-preview-box');
-                    preview.innerHTML = `<img src="${capturedImage}" class="h-full w-full object-cover">`;
-                    preview.classList.remove('hide');
+                    if(preview) {
+                        preview.innerHTML = `<img src="${capturedImage}" class="h-full w-full object-cover">`;
+                        preview.classList.remove('hide');
+                    }
                 };
                 reader.readAsDataURL(input.files[0]);
             }
         }
 
         function clearMainSignature() {
-            document.getElementById('inp-sig-data').value = '';
-            document.getElementById('sig-preview-img').classList.add('hide');
-            document.getElementById('sig-placeholder').classList.remove('hide');
+            const sigInp = document.getElementById('inp-sig-data');
+            if(sigInp) sigInp.value = '';
+            const pImg = document.getElementById('sig-preview-img');
+            if(pImg) pImg.classList.add('hide');
+            const pPlace = document.getElementById('sig-placeholder');
+            if(pPlace) pPlace.classList.remove('hide');
             if(mainSignaturePad) mainSignaturePad.clear();
         }
 
