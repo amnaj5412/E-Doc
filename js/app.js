@@ -440,23 +440,47 @@ async function updateDocStatus(rowNum, status) {
     loading(false);
 }
 
+/**
+ * ฟังก์ชันลบข้อมูลถาวร (ลบแถวออกจาก Google Sheets)
+ */
 async function permanentlyDelete(rowNum) {
+    // ค้นหาข้อมูลไอเทมนี้จาก dataList เพื่อเอา ID มาอ้างอิง
+    const item = dataList.find(d => d.rowNum === rowNum);
+    if (!item) return;
+
+    Swal.close(); // ปิด Modal รายละเอียดก่อน
     const confirm = await Swal.fire({
-        title: 'ลบถาวร?',
-        text: 'คุณจะไม่สามารถกู้คืนข้อมูลนี้ได้อีก!',
+        title: 'ยืนยันลบถาวร?',
+        text: `คุณกำลังจะลบรายการ ${item.id} ออกจากชีตถาวร แถวข้อมูลจะถูกลบทิ้งทันที!`,
         icon: 'error', 
         showCancelButton: true, 
         confirmButtonColor: '#d33', 
-        confirmButtonText: 'ลบข้อมูลถาวร', 
+        confirmButtonText: 'ใช่, ลบทิ้งเลย', 
         cancelButtonText: 'ยกเลิก'
     });
-    if(!confirm.isConfirmed) return;
 
-    loading(true, 'กำลังลบข้อมูลถาวร...');
-    await callGAS("hardDelete", { rowNum });
-    await refreshData();
-    loading(false);
+    if (!confirm.isConfirmed) return;
+
+    loading(true, 'กำลังลบแถวข้อมูลออกจาก Google Sheets...');
+    
+    // ส่ง action "hardDelete" พร้อม ID ไปที่ GAS
+    const res = await callGAS("hardDelete", { 
+        rowNum: rowNum, 
+        id: item.id 
+    });
+
+    if (res && res.success) {
+        // สำคัญ: ต้องดึงข้อมูลใหม่ทันที เพราะ Index แถวในชีตมีการขยับหลังจากลบ
+        await refreshData();
+        Swal.fire("สำเร็จ", "ลบแถวข้อมูลออกจากระบบถาวรเรียบร้อยแล้ว", "success");
+    } else {
+        loading(false);
+        Swal.fire("Error", res ? res.message : "ไม่สามารถติดต่อ Server ได้", "error");
+    }
 }
+
+// ลงทะเบียนฟังก์ชันไว้ใน window เพื่อให้หน้าตารางเรียกใช้ได้
+window.permanentlyDelete = permanentlyDelete;
 
 async function saveAppSettings() {
     const settings = { 
