@@ -1,39 +1,95 @@
 <div class="max-w-2xl mx-auto bg-white rounded-3xl shadow-xl p-6 md:p-10 border">
     <div class="flex items-center mb-8 border-b pb-4">
-        <div id="form-icon-box" class="p-3 bg-blue-50 text-blue-600 rounded-xl mr-4"></div>
+        <div id="form-icon-box" class="p-3 bg-blue-50 text-blue-600 rounded-xl mr-4 shadow-sm">
+            <!-- Icon will be injected by Lucide -->
+        </div>
         <div>
-            <h2 id="form-title-text" class="text-xl font-bold"></h2>
-            <p class="text-[10px] text-slate-400 font-bold uppercase">ระบุข้อมูลให้ครบถ้วน</p>
+            <h2 id="form-title-text" class="text-xl font-bold text-slate-800">ลงทะเบียนเอกสาร</h2>
+            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">กรุณากรอกข้อมูลให้ครบถ้วน</p>
         </div>
     </div>
+
     <form id="main-form" onsubmit="handleFormSubmit(event)" class="space-y-5">
+        <!-- แถวที่ 1: เลขที่อ้างอิง และ วันที่ -->
         <div class="grid grid-cols-2 gap-4">
-            <div><label class="text-[10px] font-bold text-slate-500 uppercase">เลขที่อ้างอิง</label><input type="text" id="inp-id" readonly class="w-full p-3 bg-slate-100 rounded-xl font-bold text-blue-600 outline-none"></div>
-            <div><label class="text-[10px] font-bold text-slate-500 uppercase">วันที่</label><input type="date" id="inp-date" required class="w-full p-3 border rounded-xl outline-none"></div>
+            <div>
+                <label class="text-[10px] font-bold text-slate-500 ml-1 mb-1 block uppercase">เลขที่อ้างอิง</label>
+                <input type="text" id="inp-id" readonly class="w-full p-3 bg-slate-100 rounded-xl font-bold text-blue-600 outline-none border-none">
+            </div>
+            <div>
+                <label class="text-[10px] font-bold text-slate-500 ml-1 mb-1 block uppercase">วันที่เอกสาร</label>
+                <input type="date" id="inp-date" required class="w-full p-3 bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-xl outline-none transition-all">
+            </div>
         </div>
+
+        <!-- แถวที่ 2: หัวข้อเรื่อง (มี Logic 'อื่นๆ') -->
         <div>
-            <label class="text-[10px] font-bold text-slate-500 uppercase">เรื่อง</label>
-            <select id="sel-subject" onchange="toggleOtherSubject(this.value)" required class="w-full p-3 border rounded-xl outline-none">
-                <option value="" disabled selected>เลือกหัวข้อ</option>
+            <label class="text-[10px] font-bold text-slate-500 ml-1 mb-1 block uppercase">หัวข้อเรื่องเอกสาร</label>
+            <select id="sel-subject" onchange="toggleOtherSubject(this.value)" required class="w-full p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 mb-2 transition-all border">
+                <option value="" disabled selected>--- เลือกหัวข้อที่ต้องการ ---</option>
                 <option value="เอกสารรายเดือน">เอกสารรายเดือน</option>
-                <option value="OTHER">อื่นๆ</option>
+                <option value="เอกสารปิดงบ">เอกสารปิดงบ</option>
+                <option value="รับ/ส่ง เอกสาร RD">รับ/ส่ง เอกสาร RD</option>
+                <option value="รับ/ส่ง เอกสาร DBD">รับ/ส่ง เอกสาร DBD</option>
+                <option value="รับ/ส่ง เอกสาร SSO">รับ/ส่ง เอกสาร SSO</option>
+                <option value="OTHER">อื่นๆ (ระบุหัวข้อใหม่)</option>
             </select>
+            <input type="text" id="inp-subject-other" placeholder="โปรดระบุหัวข้อที่ต้องการ..." class="w-full p-3 border-2 border-blue-50 rounded-xl hide focus:border-blue-400 outline-none">
         </div>
-        <div class="grid grid-cols-2 gap-4">
-            <div><label class="text-[10px] font-bold text-slate-500 uppercase">ผู้ส่ง</label><input type="text" id="inp-sender" required class="w-full p-3 border rounded-xl outline-none"></div>
-            <div><label class="text-[10px] font-bold text-slate-500 uppercase">ผู้รับ</label><input type="text" id="inp-receiver" required class="w-full p-3 border rounded-xl outline-none"></div>
+
+        <!-- แถวที่ 3: ผู้ส่ง และ ผู้รับ -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label class="text-[10px] font-bold text-slate-500 ml-1 mb-1 block uppercase">ผู้ส่ง/ลูกค้า</label>
+                <input type="text" id="inp-sender" list="dept-list" placeholder="พิมพ์เพื่อค้นหา..." required class="w-full p-3 bg-slate-50 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all border">
+                <datalist id="dept-list"></datalist>
+            </div>
+            <div>
+                <label class="text-[10px] font-bold text-slate-500 ml-1 mb-1 block uppercase">เจ้าหน้าที่ผู้รับ</label>
+                <input type="text" id="inp-receiver" required placeholder="ระบุชื่อผู้รับ" class="w-full p-3 bg-slate-50 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all border">
+            </div>
         </div>
+
+        <!-- แถวที่ 4: อีเมล -->
         <div>
-            <label class="text-[10px] font-bold text-slate-500 uppercase">ลายเซ็น</label>
+            <label class="text-[10px] font-bold text-slate-500 ml-1 mb-1 block uppercase">อีเมลผู้รับการแจ้งเตือน</label>
+            <input type="email" id="inp-email" placeholder="example@email.com" class="w-full p-3 bg-slate-50 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all border">
+        </div>
+
+        <!-- แถวที่ 5: ไฟล์แนบ และ รูปถ่าย -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <div class="p-3 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                <label class="text-[10px] font-bold text-slate-400 block mb-2 uppercase tracking-wide">ไฟล์เอกสารหลัก (PDF)</label>
+                <input type="file" id="inp-file" accept="application/pdf" class="text-[10px] w-full file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:bg-blue-50 file:text-blue-600 file:font-bold">
+            </div>
+            <div class="p-3 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                <label class="text-[10px] font-bold text-slate-400 block mb-2 uppercase tracking-wide">ภาพถ่ายหลักฐาน (JPG/PNG)</label>
+                <input type="file" id="inp-photo" accept="image/*" onchange="processPhotoSelection(this)" class="text-[10px] w-full file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:bg-emerald-50 file:text-emerald-600 file:font-bold">
+                <!-- Preview Box สำหรับรูปถ่าย -->
+                <div id="photo-preview-box" class="h-12 w-12 mt-2 mx-auto hide border rounded-lg overflow-hidden shadow-inner bg-slate-50"></div>
+            </div>
+        </div>
+
+        <!-- แถวที่ 6: พื้นที่ลายเซ็น -->
+        <div class="space-y-1">
+            <div class="flex justify-between items-center ml-1">
+                <label class="text-[10px] font-bold text-slate-500 uppercase">ลงลายมือชื่อทำรายการ</label>
+                <button type="button" onclick="clearMainSignature()" class="text-[9px] text-red-500 font-bold underline">ล้างลายเซ็น</button>
+            </div>
             <div onclick="openModal('sig-modal')" class="sig-trigger-box">
-                <p id="sig-placeholder" class="text-[11px] font-bold text-slate-300">แตะเพื่อลงนาม</p>
+                <div id="sig-placeholder" class="text-center text-slate-400">
+                    <i data-lucide="pen-tool" class="w-8 h-8 mx-auto mb-1 text-slate-200"></i>
+                    <p class="text-[11px] font-bold">แตะเพื่อลงนามรับทราบ</p>
+                </div>
                 <img id="sig-preview-img" class="hide">
             </div>
             <input type="hidden" id="inp-sig-data">
         </div>
+
+        <!-- แถวที่ 7: ปุ่มกด -->
         <div class="flex gap-4 pt-4">
-            <button type="button" onclick="switchView('dashboard')" class="flex-1 py-4 bg-slate-100 rounded-2xl font-bold">ยกเลิก</button>
-            <button type="submit" class="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-bold">บันทึกรายการ</button>
+            <button type="button" onclick="switchView('dashboard')" class="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold hover:bg-slate-200 transition-all">ยกเลิก</button>
+            <button type="submit" class="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transform hover:-translate-y-1 transition-all">บันทึกรายการ</button>
         </div>
     </form>
 </div>
