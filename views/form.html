@@ -1,0 +1,39 @@
+<div class="max-w-2xl mx-auto bg-white rounded-3xl shadow-xl p-6 md:p-10 border">
+    <div class="flex items-center mb-8 border-b pb-4">
+        <div id="form-icon-box" class="p-3 bg-blue-50 text-blue-600 rounded-xl mr-4"></div>
+        <div>
+            <h2 id="form-title-text" class="text-xl font-bold"></h2>
+            <p class="text-[10px] text-slate-400 font-bold uppercase">ระบุข้อมูลให้ครบถ้วน</p>
+        </div>
+    </div>
+    <form id="main-form" onsubmit="handleFormSubmit(event)" class="space-y-5">
+        <div class="grid grid-cols-2 gap-4">
+            <div><label class="text-[10px] font-bold text-slate-500 uppercase">เลขที่อ้างอิง</label><input type="text" id="inp-id" readonly class="w-full p-3 bg-slate-100 rounded-xl font-bold text-blue-600 outline-none"></div>
+            <div><label class="text-[10px] font-bold text-slate-500 uppercase">วันที่</label><input type="date" id="inp-date" required class="w-full p-3 border rounded-xl outline-none"></div>
+        </div>
+        <div>
+            <label class="text-[10px] font-bold text-slate-500 uppercase">เรื่อง</label>
+            <select id="sel-subject" onchange="toggleOtherSubject(this.value)" required class="w-full p-3 border rounded-xl outline-none">
+                <option value="" disabled selected>เลือกหัวข้อ</option>
+                <option value="เอกสารรายเดือน">เอกสารรายเดือน</option>
+                <option value="OTHER">อื่นๆ</option>
+            </select>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+            <div><label class="text-[10px] font-bold text-slate-500 uppercase">ผู้ส่ง</label><input type="text" id="inp-sender" required class="w-full p-3 border rounded-xl outline-none"></div>
+            <div><label class="text-[10px] font-bold text-slate-500 uppercase">ผู้รับ</label><input type="text" id="inp-receiver" required class="w-full p-3 border rounded-xl outline-none"></div>
+        </div>
+        <div>
+            <label class="text-[10px] font-bold text-slate-500 uppercase">ลายเซ็น</label>
+            <div onclick="openModal('sig-modal')" class="sig-trigger-box">
+                <p id="sig-placeholder" class="text-[11px] font-bold text-slate-300">แตะเพื่อลงนาม</p>
+                <img id="sig-preview-img" class="hide">
+            </div>
+            <input type="hidden" id="inp-sig-data">
+        </div>
+        <div class="flex gap-4 pt-4">
+            <button type="button" onclick="switchView('dashboard')" class="flex-1 py-4 bg-slate-100 rounded-2xl font-bold">ยกเลิก</button>
+            <button type="submit" class="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-bold">บันทึกรายการ</button>
+        </div>
+    </form>
+</div>
