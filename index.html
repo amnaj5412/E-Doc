@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Document Enterprise V5.5 (Modular)</title>
+    <title>E-Document Enterprise V5.5 (Modular Fix)</title>
     <!-- CSS & Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
@@ -23,7 +23,7 @@
         </div>
     </div>
 
-    <!-- Modals -->
+    <!-- Modals (ต้องอยู่ใน index.html เพื่อให้เรียกใช้ได้ทุกหน้า) -->
     <div id="sig-modal" class="modal-overlay">
         <div class="modal-content">
             <div class="p-5 border-b flex justify-between items-center bg-slate-50">
@@ -32,7 +32,7 @@
             </div>
             <div class="sig-canvas-container"><canvas id="sig-canvas-main"></canvas></div>
             <div class="p-5 bg-slate-50 flex gap-4">
-                <button onclick="mainSignaturePad.clear()" class="flex-1 py-4 text-red-500 font-bold border border-red-100 rounded-2xl hover:bg-red-50">ล้างหน้าจอ</button>
+                <button onclick="clearSignature('main')" class="flex-1 py-4 text-red-500 font-bold border border-red-100 rounded-2xl hover:bg-red-50">ล้างหน้าจอ</button>
                 <button onclick="saveSignatureFromModal()" class="flex-[2] py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 hover:bg-blue-700">ยืนยันลายเซ็น</button>
             </div>
         </div>
@@ -54,12 +54,12 @@
                     <div class="border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50 h-48 overflow-hidden">
                         <canvas id="withdraw-canvas"></canvas>
                     </div>
-                    <button onclick="withdrawSignaturePad.clear()" class="text-[10px] text-red-500 underline mt-1">ล้างลายเซ็น</button>
+                    <button onclick="clearSignature('withdraw')" class="text-[10px] text-red-500 underline mt-1">ล้างลายเซ็น</button>
                 </div>
             </div>
             <div class="p-6 bg-slate-50 flex gap-3">
                 <button onclick="closeModal('withdraw-modal')" class="flex-1 py-3 bg-white border text-slate-500 rounded-xl font-bold">ยกเลิก</button>
-                <button onclick="submitWithdraw()" class="flex-[2] py-3 bg-orange-600 text-white rounded-xl font-bold">ยืนยันบันทึกการเบิก</button>
+                <button onclick="submitWithdraw()" class="flex-[2] py-3 bg-orange-600 text-white rounded-xl font-bold shadow-lg shadow-orange-200">ยืนยันบันทึกการเบิก</button>
             </div>
         </div>
     </div>
@@ -67,6 +67,7 @@
     <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-[40] hidden md:hidden"></div>
 
     <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
         <aside id="main-sidebar" class="fixed inset-y-0 left-0 z-[50] w-64 bg-white border-r shadow-xl md:shadow-none md:relative md:translate-x-0 -translate-x-full flex flex-col shrink-0">
             <div class="p-6 text-center border-b relative flex flex-col items-center">
                 <button onclick="toggleSidebar()" class="md:hidden absolute top-4 right-4 p-2 text-slate-400"><i data-lucide="x" class="w-6 h-6"></i></button>
@@ -75,8 +76,10 @@
             </div>
             <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
                 <button onclick="handleNavClick('dashboard')" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-600 hover:bg-slate-50" data-v="dashboard"><i data-lucide="layout-grid" class="w-5 h-5 mr-3"></i> แดชบอร์ด</button>
+                <div class="text-[10px] font-bold text-slate-400 px-3 pt-4 pb-2 uppercase tracking-widest text-left">ทำรายการ</div>
                 <button onclick="handleNavClick('in')" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-600 hover:bg-slate-50" data-v="in"><i data-lucide="file-plus-2" class="w-5 h-5 mr-3 text-green-500"></i> ลงทะเบียนรับ</button>
                 <button onclick="handleNavClick('out')" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-600 hover:bg-slate-50" data-v="out"><i data-lucide="file-up" class="w-5 h-5 mr-3 text-orange-500"></i> บันทึกการส่ง</button>
+                <div class="text-[10px] font-bold text-slate-400 px-3 pt-4 pb-2 uppercase tracking-widest text-left">คลังเอกสาร</div>
                 <button onclick="handleNavClick('list_all')" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-600 hover:bg-slate-50" data-v="list_all"><i data-lucide="files" class="w-5 h-5 mr-3"></i> เอกสารทั้งหมด</button>
                 <button onclick="handleNavClick('trash')" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-600 hover:bg-slate-50" data-v="trash"><i data-lucide="trash-2" class="w-5 h-5 mr-3 text-red-400"></i> รายการจำหน่าย</button>
                 <button onclick="handleNavClick('settings')" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-600 hover:bg-slate-50" data-v="settings"><i data-lucide="settings" class="w-5 h-5 mr-3"></i> ตั้งค่า</button>
@@ -86,18 +89,19 @@
         <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
             <header class="bg-white border-b p-3 flex items-center justify-between sticky top-0 z-30">
                 <div class="flex items-center gap-2">
-                    <button onclick="toggleSidebar()" class="p-2 text-slate-500 md:hidden"><i data-lucide="menu"></i></button>
+                    <button onclick="toggleSidebar()" class="p-2 text-slate-500 md:hidden hover:bg-slate-100 rounded-lg"><i data-lucide="menu"></i></button>
                     <img id="mob-logo" src="https://cdn-icons-png.flaticon.com/512/281/281760.png" class="w-8 h-8 rounded md:hidden">
                     <span id="mob-title" class="font-bold text-blue-600 text-lg truncate">E-Doc Enterprise</span>
                 </div>
-                <button onclick="refreshData()" class="p-2 text-slate-400 hover:text-blue-500"><i data-lucide="refresh-cw" class="w-5 h-5"></i></button>
+                <button onclick="refreshData()" class="p-2 text-slate-400 hover:text-blue-500 transition-colors"><i data-lucide="refresh-cw" class="w-5 h-5"></i></button>
             </header>
             <div id="main-content" class="flex-1 overflow-y-auto p-4 md:p-8">
-                <!-- Content injected here -->
+                <!-- Content injected here via app.js -->
             </div>
         </main>
     </div>
 
+    <!-- Main JS Application -->
     <script src="js/app.js"></script>
 </body>
 </html>
