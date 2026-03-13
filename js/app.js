@@ -1,7 +1,7 @@
 // --- Configuration ---
 const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxmkVkx7Ut-f0pnEs6PEAJIa6mXV70gLu03P1NnTay5xPMEIkkON4HvODg8-Bovvbkc/exec";
 
-// --- State ---
+// --- State Management (ยกมาจากต้นฉบับ) ---
 let dataList = [];
 let systemSettings = { companyName: 'E-Document', logoUrl: 'https://cdn-icons-png.flaticon.com/512/281/281760.png' };
 let currentMode = 'dashboard';
@@ -14,11 +14,11 @@ let capturedImage = null;
 let currentWithdrawRow = null;
 
 /**
- * Core Server Bridge
+ * Core Server Bridge (เรียกใช้ GAS)
  */
 async function callGAS(action, params = {}) {
     if (!GAS_WEB_APP_URL || !GAS_WEB_APP_URL.includes("exec")) {
-        Swal.fire("Config Error", "กรุณาตั้งค่า URL Web App", "error");
+        Swal.fire("Configuration Error", "กรุณาตั้งค่า URL Web App ในโค้ดก่อนใช้งาน", "error");
         return null;
     }
     try {
@@ -26,21 +26,32 @@ async function callGAS(action, params = {}) {
             method: "POST",
             body: JSON.stringify({ action, ...params })
         });
+        if (!response.ok) throw new Error("Server Response Error");
         return await response.json();
     } catch (err) {
-        console.error("GAS Error:", err);
+        console.error("GAS Connection Error:", err);
         return null;
     }
 }
 
 /**
- * View Router - โหลด Template HTML มาแสดงผล
+ * Loading Overlay
+ */
+function loading(show, text) {
+    const el = document.getElementById('loading');
+    if (el) el.style.display = show ? 'flex' : 'none';
+    const txt = document.getElementById('loading-text');
+    if (txt && text) txt.innerText = text;
+}
+
+/**
+ * View Router - ควบคุมการเปลี่ยนหน้าและโหลด Template
  */
 async function switchView(view) {
     currentMode = view;
     loading(true, 'กำลังเปลี่ยนหน้า...');
     
-    // UI: Active Nav
+    // UI: จัดการเมนู Active
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active-nav'));
     const activeBtn = document.querySelector(`.nav-btn[data-v="${view}"]`);
     if (activeBtn) activeBtn.classList.add('active-nav');
@@ -57,7 +68,7 @@ async function switchView(view) {
         const container = document.getElementById('main-content');
         container.innerHTML = html;
 
-        // Initialize specific view logic after HTML injected
+        // Initialize เฉพาะส่วนหลังจาก HTML ถูกใส่เข้าไปใน DOM แล้ว
         if (viewPath.includes('dashboard')) initDashboardView(view);
         if (viewPath.includes('form')) initFormView(view.toUpperCase());
         if (viewPath.includes('settings')) initSettingsView();
@@ -65,7 +76,7 @@ async function switchView(view) {
         lucide.createIcons();
     } catch (err) {
         console.error("Router Error:", err);
-        document.getElementById('main-content').innerHTML = '<p class="text-center p-20 text-red-400">ไม่สามารถโหลดหน้าเว็บได้ (ตรวจสอบการเชื่อมต่อ)</p>';
+        document.getElementById('main-content').innerHTML = '<p class="text-center p-20 text-red-400">เกิดข้อผิดพลาดในการโหลดหน้าเว็บ</p>';
     } finally {
         loading(false);
     }
@@ -79,7 +90,10 @@ function initDashboardView(mode) {
     const head = document.getElementById('list-head');
     if (head) head.innerText = titles[mode] || 'รายการเอกสาร';
     
-    if (mode === 'trash') document.getElementById('stats-bar')?.classList.add('hide');
+    if (mode === 'trash') {
+        const stats = document.getElementById('stats-bar');
+        if(stats) stats.classList.add('hide');
+    }
     
     updateStatsDisplay();
     populateYearFilter();
@@ -87,7 +101,7 @@ function initDashboardView(mode) {
 }
 
 /**
- * Form Setup
+ * Form Setup (ยกมาจากต้นฉบับ initEntryForm)
  */
 async function initFormView(type) {
     const fTitle = document.getElementById('form-title-text');
@@ -103,7 +117,9 @@ async function initFormView(type) {
 
     const depts = await callGAS("getDepartments");
     const dList = document.getElementById('dept-list');
-    if (depts && dList) dList.innerHTML = depts.map(d => `<option value="${d}">`).join('');
+    if (depts && dList) {
+        dList.innerHTML = depts.map(d => `<option value="${d}">`).join('');
+    }
     
     lucide.createIcons();
 }
@@ -112,15 +128,17 @@ async function initFormView(type) {
  * Settings Setup
  */
 function initSettingsView() {
-    document.getElementById('set-name').value = systemSettings.companyName || '';
-    document.getElementById('set-logo').value = systemSettings.logoUrl || '';
+    const nameInp = document.getElementById('set-name');
+    const logoInp = document.getElementById('set-logo');
+    if(nameInp) nameInp.value = systemSettings.companyName || '';
+    if(logoInp) logoInp.value = systemSettings.logoUrl || '';
 }
 
 /**
  * Data Management
  */
 async function refreshData() {
-    loading(true, 'กำลังดึงข้อมูลล่าสุด...');
+    loading(true, 'กำลังดึงข้อมูลจาก Google Sheets...');
     const res = await callGAS("getFullData");
     if (res) {
         dataList = res.list || [];
@@ -138,9 +156,10 @@ function applySettings() {
 }
 
 /**
- * Signature Pad Logic
+ * Signature Pad Logic (ปรับปรุงให้เสถียรขึ้น)
  */
 function openModal(id, rowNum = null) {
+    Swal.close();
     const modal = document.getElementById(id);
     if (!modal) return;
     modal.style.display = 'flex';
@@ -148,7 +167,6 @@ function openModal(id, rowNum = null) {
     const canvas = (id === 'sig-modal') ? document.getElementById('sig-canvas-main') : document.getElementById('withdraw-canvas');
     if (!canvas) return;
 
-    // Resize Canvas for High DPI
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
     canvas.width = canvas.offsetWidth * ratio;
     canvas.height = canvas.offsetHeight * ratio;
@@ -186,7 +204,7 @@ function saveSignatureFromModal() {
 }
 
 /**
- * Table Rendering
+ * Table Rendering (Logic จากต้นฉบับ renderFilteredTable)
  */
 function renderFilteredTable() {
     const tbody = document.getElementById('list-table');
@@ -207,10 +225,11 @@ function renderFilteredTable() {
     const items = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     if (items.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="p-16 text-center text-slate-300 italic">ไม่มีข้อมูลที่แสดงผล</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="p-16 text-center text-slate-300 italic">ไม่มีข้อมูลที่ตรงตามเงื่อนไข</td></tr>';
     } else {
         tbody.innerHTML = items.map(item => {
             const isWithdrawn = !!(item.withdrawStatus && item.withdrawStatus.includes("เบิกแล้ว"));
+            const status = (item.status || "").toString().trim().toLowerCase();
             return `
                 <tr class="hover:bg-blue-50/40 border-b border-slate-50 transition-all">
                     <td class="p-4"><div class="font-bold text-blue-600">${item.id}</div><div class="text-[10px] text-slate-400 font-medium">${item.date}</div></td>
@@ -223,7 +242,13 @@ function renderFilteredTable() {
                         <div class="flex justify-center items-center gap-2">
                              ${isWithdrawn ? `<div class="w-8 h-8 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center shadow-sm" title="เบิกแล้วโดย: ${item.withdrawName}"><i data-lucide="package-check" class="w-4 h-4"></i></div>` : ''}
                             <button onclick="showDetails(${item.rowNum})" class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all"><i data-lucide="eye" class="w-4 h-4"></i></button>
-                            <button onclick="updateDocStatus(${item.rowNum}, '${item.status === 'deleted' ? 'active' : 'deleted'}')" class="p-2 bg-slate-50 text-slate-400 rounded-lg hover:bg-slate-700 hover:text-white transition-all"><i data-lucide="${item.status === 'deleted' ? 'refresh-cw' : 'trash-2'}" class="w-4 h-4"></i></button>
+                            ${status === 'active' 
+                               ? `<button onclick="updateDocStatus(${item.rowNum}, 'deleted')" class="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`
+                               : `<div class="flex gap-1">
+                                    <button onclick="updateDocStatus(${item.rowNum}, 'active')" class="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-all"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                                    <button onclick="permanentlyDelete(${item.rowNum})" class="p-2 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-700 hover:text-white transition-all"><i data-lucide="x-circle" class="w-4 h-4"></i></button>
+                                  </div>`
+                            }
                         </div>
                     </td>
                 </tr>`;
@@ -235,7 +260,7 @@ function renderFilteredTable() {
 }
 
 /**
- * Detail Modal Logic
+ * Detail Modal Logic (Logic จากต้นฉบับ showDetails)
  */
 function showDetails(rowNum) {
     const item = dataList.find(d => d.rowNum === rowNum);
@@ -251,9 +276,10 @@ function showDetails(rowNum) {
     const detailHtml = `
         <div class="text-left text-sm space-y-4">
             <div class="bg-slate-50 p-6 rounded-3xl space-y-3 border">
-                <div class="flex justify-between border-b pb-2"><span class="text-slate-400 font-bold text-[10px] uppercase tracking-wide">เรื่องเอกสาร</span><span class="font-bold text-right ml-4">${item.title}</span></div>
-                <div class="flex justify-between border-b pb-2"><span class="text-slate-400 font-bold text-[10px] uppercase tracking-wide">ต้นทาง/ปลายทาง</span><span>${item.sender} &rarr; ${item.receiver}</span></div>
-                <div class="flex justify-between"><span class="text-slate-400 font-bold text-[10px] uppercase tracking-wide">วันที่เอกสาร</span><span>${item.date}</span></div>
+                <div class="flex justify-between border-b pb-2"><span class="text-slate-400 font-bold text-[10px] uppercase">เรื่องเอกสาร</span><span class="font-bold text-right ml-4">${item.title}</span></div>
+                <div class="flex justify-between border-b pb-2"><span class="text-slate-400 font-bold text-[10px] uppercase">ต้นทาง</span><span>${item.sender}</span></div>
+                <div class="flex justify-between border-b pb-2"><span class="text-slate-400 font-bold text-[10px] uppercase">ผู้รับ</span><span>${item.receiver}</span></div>
+                <div class="flex justify-between"><span class="text-slate-400 font-bold text-[10px] uppercase">วันที่เอกสาร</span><span>${item.date}</span></div>
             </div>
             ${isWithdrawn ? `
                 <div class="p-4 bg-orange-50 border border-orange-200 rounded-3xl">
@@ -292,14 +318,14 @@ function showDetails(rowNum) {
 }
 
 /**
- * Form Submission Logic
+ * Form Submission Logic (Logic จากต้นฉบับ handleFormSubmit)
  */
 async function handleFormSubmit(e) {
     e.preventDefault();
     const sig = document.getElementById('inp-sig-data')?.value;
     if(!sig) { Swal.fire("คำเตือน", "กรุณาลงลายมือชื่อยืนยันการทำรายการ", "warning"); return; }
 
-    loading(true, 'กำลังบันทึกข้อมูลลง Google Sheets...');
+    loading(true, 'กำลังส่งข้อมูลบันทึกลง Google Sheets...');
     
     const selVal = document.getElementById('sel-subject')?.value;
     const otherSubject = document.getElementById('inp-subject-other')?.value;
@@ -354,6 +380,9 @@ async function submitWithdraw() {
     }
 }
 
+/**
+ * Management Actions (Logic จากต้นฉบับ updateStatus, hardDelete, saveSettings)
+ */
 async function updateDocStatus(rowNum, status) {
     const confirm = await Swal.fire({
         title: status === 'deleted' ? 'ย้ายลงถังขยะ?' : 'กู้คืนเอกสาร?',
@@ -365,6 +394,33 @@ async function updateDocStatus(rowNum, status) {
     await callGAS("updateStatus", { rowNum, status });
     await refreshData();
     loading(false);
+}
+
+async function permanentlyDelete(rowNum) {
+    const confirm = await Swal.fire({
+        title: 'ลบถาวร?',
+        text: 'คุณจะไม่สามารถกู้คืนข้อมูลนี้ได้อีก!',
+        icon: 'error', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบข้อมูล', cancelButtonText: 'ยกเลิก'
+    });
+    if(!confirm.isConfirmed) return;
+
+    loading(true, 'กำลังลบข้อมูลถาวร...');
+    await callGAS("hardDelete", { rowNum });
+    await refreshData();
+    loading(false);
+}
+
+async function saveAppSettings() {
+    const settings = { 
+        companyName: document.getElementById('set-name')?.value, 
+        logoUrl: document.getElementById('set-logo')?.value 
+    };
+    loading(true, 'กำลังบันทึกตั้งค่า...');
+    const res = await callGAS("saveSettings", { settings });
+    loading(false);
+    if(res && res.success) {
+        Swal.fire("สำเร็จ", "บันทึกการตั้งค่าระบบเรียบร้อย", "success").then(refreshData);
+    }
 }
 
 // --- บังคับให้ Function อยู่ใน Global Scope ---
@@ -379,6 +435,8 @@ window.resetAndRender = () => { currentPage = 1; renderFilteredTable(); };
 window.showDetails = showDetails;
 window.submitWithdraw = submitWithdraw;
 window.updateDocStatus = updateDocStatus;
+window.permanentlyDelete = permanentlyDelete;
+window.saveAppSettings = saveAppSettings;
 window.handleFormSubmit = handleFormSubmit;
 window.toggleSidebar = () => {
     document.getElementById('main-sidebar').classList.toggle('-translate-x-full');
@@ -391,18 +449,35 @@ window.toggleOtherSubject = (val) => {
         else { otherInp.classList.add('hide'); otherInp.required = false; otherInp.value = ''; }
     }
 };
+window.processPhotoSelection = async (input) => {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            capturedImage = e.target.result;
+            const preview = document.getElementById('photo-preview-box');
+            if(preview) {
+                preview.innerHTML = `<img src="${capturedImage}" class="h-full w-full object-cover">`;
+                preview.classList.remove('hide');
+            }
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+};
 
 // Utilities
-function loading(show, text) {
-    const el = document.getElementById('loading');
-    if (el) el.style.display = show ? 'flex' : 'none';
-    if (text) document.getElementById('loading-text').innerText = text;
-}
-
 function renderPaginationUI(curr, total) {
     const info = document.getElementById('pagination-info');
     if (info) info.innerText = `แสดงหน้าที่ ${curr} จากทั้งหมด ${total} หน้า`;
+    const nums = document.getElementById('page-numbers');
+    if(!nums) return;
+    let html = '';
+    for(let i=1; i<=total; i++) {
+        const activeClass = (i === curr) ? 'active' : '';
+        html += `<button onclick="goToPage(${i})" class="page-btn ${activeClass}">${i}</button>`;
+    }
+    nums.innerHTML = html;
 }
+window.goToPage = (p) => { currentPage = p; renderFilteredTable(); };
 
 function updateStatsDisplay() { 
     const counts = {
