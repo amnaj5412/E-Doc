@@ -1,6 +1,7 @@
 /**
  * E-Document Enterprise Module System (V5.5 Modular Fix)
  * Core Logic & Server Bridge
+ * กู้คืนฟังก์ชันการทำงานทั้งหมดจากต้นฉบับ V5.4
  */
 
 // --- Configuration ---
@@ -15,7 +16,7 @@ const itemsPerPage = 20;
 
 let mainSignaturePad = null;
 let withdrawSignaturePad = null;
-let capturedImage = null; // เก็บข้อมูลภาพถ่ายหลักฐาน
+let capturedImage = null; // เก็บข้อมูลภาพถ่ายหลักฐาน (Base64)
 let currentWithdrawRow = null;
 
 /**
@@ -56,7 +57,7 @@ async function switchView(view) {
     currentMode = view;
     loading(true, 'กำลังเปลี่ยนหน้า...');
     
-    // รีเซ็ตสถานะภายในเมื่อเปลี่ยนหน้า
+    // รีเซ็ตสถานะภาพถ่ายเมื่อเปลี่ยนหน้า
     capturedImage = null; 
     
     // UI: จัดการเมนู Active
@@ -76,7 +77,7 @@ async function switchView(view) {
         const container = document.getElementById('main-content');
         container.innerHTML = html;
 
-        // Initialize เฉพาะส่วนหลังจาก HTML ถูกใส่เข้าไปใน DOM แล้ว
+        // Initialize ฟังก์ชันเฉพาะหน้าหลังจากโหลด HTML สำเร็จ
         if (viewPath.includes('dashboard')) initDashboardView(view);
         if (viewPath.includes('form')) initFormView(view.toUpperCase());
         if (viewPath.includes('settings')) initSettingsView();
@@ -84,7 +85,7 @@ async function switchView(view) {
         lucide.createIcons();
     } catch (err) {
         console.error("Router Error:", err);
-        document.getElementById('main-content').innerHTML = '<p class="text-center p-20 text-red-400">เกิดข้อผิดพลาดในการโหลดหน้าเว็บ</p>';
+        document.getElementById('main-content').innerHTML = '<p class="text-center p-20 text-red-400">เกิดข้อผิดพลาดในการโหลดหน้าเว็บ (ตรวจสอบ Path ของไฟล์ HTML)</p>';
     } finally {
         loading(false);
     }
@@ -109,7 +110,7 @@ function initDashboardView(mode) {
 }
 
 /**
- * Form Setup (Logic จากต้นฉบับเพื่อให้การลงทะเบียนเหมือนเดิม)
+ * Form Setup (ถอดแบบมาจากต้นฉบับ initEntryForm)
  */
 async function initFormView(type) {
     const fTitle = document.getElementById('form-title-text');
@@ -122,7 +123,7 @@ async function initFormView(type) {
     // ตั้งค่าวันที่ปัจจุบัน (Default)
     if (iDate) iDate.valueAsDate = new Date();
 
-    // สร้างเลขที่เอกสารใหม่
+    // ดึงเลขที่เอกสารใหม่ (generateNextId)
     const id = await callGAS("generateNextId", { prefix: type });
     if (id) document.getElementById('inp-id').value = id;
 
@@ -144,24 +145,32 @@ function initSettingsView() {
     const logoInp = document.getElementById('set-logo');
     if(nameInp) nameInp.value = systemSettings.companyName || '';
     if(logoInp) logoInp.value = systemSettings.logoUrl || '';
+    lucide.createIcons();
 }
 
 /**
  * Data Management
  */
 async function refreshData() {
-    loading(true, 'กำลังดึงข้อมูลจาก Google Sheets...');
-    const res = await callGAS("getFullData");
-    if (res) {
-        dataList = res.list || [];
-        systemSettings = res.settings || systemSettings;
-        applySettings();
-        if (currentMode === 'dashboard' || currentMode === 'list_all' || currentMode === 'trash') {
-            renderFilteredTable();
-            updateStatsDisplay();
+    loading(true, 'กำลังโหลดข้อมูลจาก Google Sheets...');
+    try {
+        const res = await callGAS("getFullData");
+        if (res) {
+            dataList = res.list || [];
+            systemSettings = res.settings || systemSettings;
+            applySettings();
+            
+            // ถ้าอยู่ในหน้าตาราง ให้วาดใหม่
+            if (currentMode === 'dashboard' || currentMode === 'list_all' || currentMode === 'trash') {
+                renderFilteredTable();
+                updateStatsDisplay();
+            }
         }
+    } catch (e) {
+        console.error(e);
+    } finally {
+        loading(false);
     }
-    loading(false);
 }
 
 function applySettings() {
@@ -171,7 +180,7 @@ function applySettings() {
 }
 
 /**
- * Signature Pad Logic
+ * Signature Pad Logic (Handles High-DPI and Resizing)
  */
 function openModal(id, rowNum = null) {
     Swal.close();
@@ -222,7 +231,7 @@ function saveSignatureFromModal() {
 }
 
 /**
- * Table Rendering
+ * Table Rendering (Logic จากต้นฉบับ renderFilteredTable)
  */
 function renderFilteredTable() {
     const tbody = document.getElementById('list-table');
@@ -233,7 +242,8 @@ function renderFilteredTable() {
 
     let filtered = dataList.filter(item => {
         const status = (item.status || "").toString().trim().toLowerCase();
-        return currentMode === 'trash' ? status === 'deleted' : status === 'active';
+        if (currentMode === 'trash') return status === 'deleted';
+        return status === 'active';
     });
 
     if (year !== "all") filtered = filtered.filter(d => (d.date || "").includes(year));
@@ -278,7 +288,7 @@ function renderFilteredTable() {
 }
 
 /**
- * Detail Modal Logic
+ * Detail Modal Logic (Logic จากต้นฉบับ showDetails)
  */
 function showDetails(rowNum) {
     const item = dataList.find(d => d.rowNum === rowNum);
@@ -298,11 +308,13 @@ function showDetails(rowNum) {
                 <div class="flex justify-between border-b pb-2"><span class="text-slate-400 font-bold text-[10px] uppercase">ต้นทาง</span><span>${item.sender}</span></div>
                 <div class="flex justify-between border-b pb-2"><span class="text-slate-400 font-bold text-[10px] uppercase">ผู้รับ</span><span>${item.receiver}</span></div>
                 <div class="flex justify-between border-b pb-2"><span class="text-slate-400 font-bold text-[10px] uppercase">วันที่เอกสาร</span><span>${item.date}</span></div>
+                <div class="flex justify-between"><span class="text-slate-400 font-bold text-[10px] uppercase">เวลาบันทึก</span><span class="text-[10px] text-slate-400">${item.timestamp}</span></div>
             </div>
             ${isWithdrawn ? `
                 <div class="p-4 bg-orange-50 border border-orange-200 rounded-3xl">
                     <p class="text-[10px] font-bold text-orange-600 mb-2 uppercase tracking-widest flex items-center"><i data-lucide="info" class="w-3 h-3 mr-1"></i> ข้อมูลการเบิก</p>
                     <p class="font-bold text-orange-800">ผู้เบิก: ${item.withdrawName}</p>
+                    <p class="text-[10px] text-slate-400 font-medium">วันที่เบิก: ${item.withdrawStatus}</p>
                     <div class="bg-white mt-3 p-3 rounded-2xl border border-orange-100 shadow-inner flex justify-center">
                         ${getThumb(item.withdrawSig) ? `<img src="${getThumb(item.withdrawSig)}" class="h-16">` : '<span class="text-slate-300 italic text-xs">ไม่มีลายเซ็น</span>'}
                     </div>
@@ -320,8 +332,8 @@ function showDetails(rowNum) {
                     </div>
                 </div>
             </div>
-            ${item.fileUrl && !item.fileUrl.includes('Error') ? `<a href="${item.fileUrl}" target="_blank" class="block py-4 bg-blue-50 text-blue-600 text-center rounded-2xl font-bold hover:bg-blue-100 transition-all">เปิดไฟล์ PDF ต้นฉบับ</a>` : ''}
-            ${(!isWithdrawn && item.status === 'active' && item.id.includes('IN')) ? `<button onclick="openModal('withdraw-modal', ${item.rowNum})" class="w-full py-5 bg-orange-500 text-white rounded-2xl font-bold shadow-lg hover:bg-orange-600 transition-all flex items-center justify-center"><i data-lucide="hand-helping" class="w-5 h-5 mr-2"></i> ทำรายการเบิกเอกสาร</button>` : ''}
+            ${item.fileUrl && !item.fileUrl.includes('Error') ? `<a href="${item.fileUrl}" target="_blank" class="block py-4 bg-blue-50 text-blue-600 text-center rounded-2xl font-bold hover:bg-blue-100 transition-all flex items-center justify-center"><i data-lucide="file-text" class="w-4 h-4 mr-2"></i> เปิดไฟล์ PDF ต้นฉบับ</a>` : ''}
+            ${(!isWithdrawn && item.status === 'active' && item.id.includes('IN')) ? `<button onclick="openModal('withdraw-modal', ${item.rowNum})" class="w-full py-5 bg-orange-500 text-white rounded-2xl font-bold shadow-lg hover:bg-orange-600 transition-all flex items-center justify-center"><i data-lucide="hand-helping" class="w-5 h-5 mr-2"></i> ทำรายการเบิกเอกสารฉบับจริง</button>` : ''}
         </div>
     `;
 
@@ -336,12 +348,12 @@ function showDetails(rowNum) {
 }
 
 /**
- * Form Submission Logic (สำคัญ: นำ Logic ต้นฉบับกลับมาใช้ทั้งหมด)
+ * Form Submission Logic ( Logic ต้นฉบับ 100% )
  */
 async function handleFormSubmit(e) {
     e.preventDefault();
     
-    // ตรวจสอบลายเซ็น (เหมือนต้นฉบับ)
+    // ตรวจสอบลายเซ็น
     const sig = document.getElementById('inp-sig-data')?.value;
     if(!sig) { Swal.fire("คำเตือน", "กรุณาลงลายมือชื่อยืนยันการทำรายการ", "warning"); return; }
 
@@ -352,11 +364,11 @@ async function handleFormSubmit(e) {
     const otherSubject = document.getElementById('inp-subject-other')?.value;
     const finalTitle = selVal === 'OTHER' ? otherSubject : selVal;
     
-    // จัดการรูปแบบวันที่เป็น พ.ศ. (เหมือนต้นฉบับ)
+    // จัดการรูปแบบวันที่เป็น พ.ศ. 
     const dVal = document.getElementById('inp-date')?.value.split('-');
     const formattedDate = `${dVal[2]}/${dVal[1]}/${parseInt(dVal[0])+543}`;
 
-    // จัดการไฟล์ PDF (เหมือนต้นฉบับ)
+    // จัดการไฟล์ PDF 
     const fileEl = document.getElementById('inp-file');
     let fileData = null, fileName = "";
     if (fileEl?.files[0]) {
@@ -364,7 +376,7 @@ async function handleFormSubmit(e) {
         fileName = fileEl.files[0].name;
     }
 
-    // เตรียม Payload ให้ตรงกับ GAS Script
+    // เตรียม Payload ให้ตรงกับ Google Apps Script
     const payload = {
         id: document.getElementById('inp-id')?.value,
         docDate: formattedDate,
@@ -374,7 +386,7 @@ async function handleFormSubmit(e) {
         emailRecipient: document.getElementById('inp-email')?.value,
         fileData, 
         fileName,
-        photoData: capturedImage, // ข้อมูลรูปภาพจาก processPhotoSelection
+        photoData: capturedImage, 
         sigData: sig
     };
 
@@ -392,7 +404,7 @@ async function handleFormSubmit(e) {
 }
 
 /**
- * Withdrawal Logic
+ * Withdrawal Submission Logic
  */
 async function submitWithdraw() {
     const name = document.getElementById('withdraw-name')?.value;
@@ -410,7 +422,7 @@ async function submitWithdraw() {
 }
 
 /**
- * Management Actions
+ * Management Actions (Logic: updateStatus, permanentlyDelete, saveAppSettings)
  */
 async function updateDocStatus(rowNum, status) {
     const confirm = await Swal.fire({
@@ -459,7 +471,7 @@ async function saveAppSettings() {
     }
 }
 
-// --- บังคับให้ Function อยู่ใน Global Scope เพื่อให้ HTML เรียกใช้ผ่าน onclick ได้ ---
+// --- Global Scope Exports (เพื่อให้ HTML เรียกใช้ผ่าน onclick/onchange ได้) ---
 window.switchView = switchView;
 window.refreshData = refreshData;
 window.handleNavClick = (v) => { if(window.innerWidth < 768) toggleSidebar(); switchView(v); };
@@ -487,13 +499,13 @@ window.toggleOtherSubject = (val) => {
 };
 
 /**
- * ฟังก์ชันจัดการการเลือกรูปภาพ (เหมือนต้นฉบับ processPhotoSelection)
+ * ฟังก์ชันจัดการการเลือกรูปภาพ ( processPhotoSelection )
  */
 window.processPhotoSelection = async (input) => {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = (e) => {
-            capturedImage = e.target.result; // บันทึกลงตัวแปร Global เพื่อใช้ตอน Submit
+            capturedImage = e.target.result; 
             const preview = document.getElementById('photo-preview-box');
             if(preview) {
                 preview.innerHTML = `<img src="${capturedImage}" class="h-full w-full object-cover">`;
@@ -505,7 +517,7 @@ window.processPhotoSelection = async (input) => {
 };
 
 /**
- * ฟังก์ชันล้างลายเซ็นหน้าฟอร์ม (เหมือนต้นฉบับ clearMainSignature)
+ * ฟังก์ชันล้างลายเซ็นหน้าฟอร์ม ( clearMainSignature )
  */
 window.clearMainSignature = () => {
     const sigInp = document.getElementById('inp-sig-data');
@@ -517,7 +529,7 @@ window.clearMainSignature = () => {
     if(mainSignaturePad) mainSignaturePad.clear();
 };
 
-// Utilities
+// Utilities & Pagination
 function renderPaginationUI(curr, total) {
     const info = document.getElementById('pagination-info');
     if (info) info.innerText = `แสดงหน้าที่ ${curr} จากทั้งหมด ${total} หน้า`;
