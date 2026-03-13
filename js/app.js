@@ -5,7 +5,7 @@
  */
 
 // --- Configuration ---
-const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxmkVkx7Ut-f0pnEs6PEAJIa6mXV70gLu03P1NnTay5xPMEIkkON4HvODg8-Bovvbkc/exec";
+const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxvoSgm2Sn78wbCrxq84KIUMuLS8sbPADnVWd5MqIhVWoZuPkTT9oT8Lr85oij2H1rk/exec";
 
 // --- State Management ---
 let dataList = [];
