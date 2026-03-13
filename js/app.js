@@ -16,7 +16,7 @@ const itemsPerPage = 20;
 
 let mainSignaturePad = null;
 let withdrawSignaturePad = null;
-let capturedImage = null; // เก็บข้อมูลภาพถ่ายหลักฐาน (Base64)
+let capturedImage = null; // สำหรับเก็บรูปถ่ายหลักฐาน Base64
 let currentWithdrawRow = null;
 
 /**
@@ -57,7 +57,7 @@ async function switchView(view) {
     currentMode = view;
     loading(true, 'กำลังเปลี่ยนหน้า...');
     
-    // รีเซ็ตสถานะภาพถ่ายเมื่อเปลี่ยนหน้า
+    // รีเซ็ตสถานะภายในเมื่อเปลี่ยนหน้า (ป้องกันข้อมูลค้างจากหน้าก่อน)
     capturedImage = null; 
     
     // UI: จัดการเมนู Active
@@ -110,7 +110,7 @@ function initDashboardView(mode) {
 }
 
 /**
- * Form Setup (ถอดแบบมาจากต้นฉบับ initEntryForm)
+ * Form Setup (ถอดแบบมาจากต้นฉบับ V5.4)
  */
 async function initFormView(type) {
     const fTitle = document.getElementById('form-title-text');
@@ -120,14 +120,14 @@ async function initFormView(type) {
     if (fTitle) fTitle.innerText = (type === 'IN' ? 'ลงทะเบียนรับเอกสารเข้า' : 'บันทึกการส่งออกเอกสาร');
     if (fIcon) fIcon.innerHTML = `<i data-lucide="${type === 'IN' ? 'download-cloud' : 'upload-cloud'}" class="w-8 h-8"></i>`;
     
-    // ตั้งค่าวันที่ปัจจุบัน (Default)
+    // 1. ตั้งค่าวันที่ปัจจุบัน
     if (iDate) iDate.valueAsDate = new Date();
 
-    // ดึงเลขที่เอกสารใหม่ (generateNextId)
+    // 2. ดึงเลขที่เอกสารใหม่รันนิ่ง (generateNextId)
     const id = await callGAS("generateNextId", { prefix: type });
     if (id) document.getElementById('inp-id').value = id;
 
-    // ดึงรายชื่อหน่วยงานสำหรับ Auto-complete
+    // 3. ดึงรายชื่อหน่วยงานสำหรับ Datalist
     const depts = await callGAS("getDepartments");
     const dList = document.getElementById('dept-list');
     if (depts && dList) {
@@ -145,7 +145,6 @@ function initSettingsView() {
     const logoInp = document.getElementById('set-logo');
     if(nameInp) nameInp.value = systemSettings.companyName || '';
     if(logoInp) logoInp.value = systemSettings.logoUrl || '';
-    lucide.createIcons();
 }
 
 /**
@@ -160,7 +159,7 @@ async function refreshData() {
             systemSettings = res.settings || systemSettings;
             applySettings();
             
-            // ถ้าอยู่ในหน้าตาราง ให้วาดใหม่
+            // อัปเดตตารางและสถิติหากอยู่ในหน้า Dashboard
             if (currentMode === 'dashboard' || currentMode === 'list_all' || currentMode === 'trash') {
                 renderFilteredTable();
                 updateStatsDisplay();
@@ -180,7 +179,7 @@ function applySettings() {
 }
 
 /**
- * Signature Pad Logic (Handles High-DPI and Resizing)
+ * Signature Pad Logic
  */
 function openModal(id, rowNum = null) {
     Swal.close();
@@ -191,6 +190,7 @@ function openModal(id, rowNum = null) {
     const canvas = (id === 'sig-modal') ? document.getElementById('sig-canvas-main') : document.getElementById('withdraw-canvas');
     if (!canvas) return;
 
+    // รองรับความชัดเจนของเส้นบนหน้าจอ Retina/High-DPI
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
     canvas.width = canvas.offsetWidth * ratio;
     canvas.height = canvas.offsetHeight * ratio;
@@ -231,7 +231,7 @@ function saveSignatureFromModal() {
 }
 
 /**
- * Table Rendering (Logic จากต้นฉบับ renderFilteredTable)
+ * Table Rendering
  */
 function renderFilteredTable() {
     const tbody = document.getElementById('list-table');
@@ -288,7 +288,7 @@ function renderFilteredTable() {
 }
 
 /**
- * Detail Modal Logic (Logic จากต้นฉบับ showDetails)
+ * Detail Modal Logic (ดึง Thumbnail จาก Google Drive เหมือนต้นฉบับ)
  */
 function showDetails(rowNum) {
     const item = dataList.find(d => d.rowNum === rowNum);
@@ -348,27 +348,27 @@ function showDetails(rowNum) {
 }
 
 /**
- * Form Submission Logic ( Logic ต้นฉบับ 100% )
+ * Form Submission Logic (กู้คืนฟังก์ชันบันทึกข้อมูลแบบต้นฉบับ 100%)
  */
 async function handleFormSubmit(e) {
     e.preventDefault();
     
-    // ตรวจสอบลายเซ็น
+    // 1. ตรวจสอบลายเซ็นยืนยัน
     const sig = document.getElementById('inp-sig-data')?.value;
     if(!sig) { Swal.fire("คำเตือน", "กรุณาลงลายมือชื่อยืนยันการทำรายการ", "warning"); return; }
 
     loading(true, 'กำลังส่งข้อมูลบันทึกลง Google Sheets...');
     
-    // จัดการหัวข้อเรื่อง
+    // 2. จัดการหัวข้อเรื่อง (Logic "OTHER")
     const selVal = document.getElementById('sel-subject')?.value;
     const otherSubject = document.getElementById('inp-subject-other')?.value;
     const finalTitle = selVal === 'OTHER' ? otherSubject : selVal;
     
-    // จัดการรูปแบบวันที่เป็น พ.ศ. 
+    // 3. จัดการรูปแบบวันที่เป็น พ.ศ. (วว/ดด/ปปปป+543)
     const dVal = document.getElementById('inp-date')?.value.split('-');
     const formattedDate = `${dVal[2]}/${dVal[1]}/${parseInt(dVal[0])+543}`;
 
-    // จัดการไฟล์ PDF 
+    // 4. จัดการไฟล์เอกสารหลัก (PDF)
     const fileEl = document.getElementById('inp-file');
     let fileData = null, fileName = "";
     if (fileEl?.files[0]) {
@@ -376,7 +376,7 @@ async function handleFormSubmit(e) {
         fileName = fileEl.files[0].name;
     }
 
-    // เตรียม Payload ให้ตรงกับ Google Apps Script
+    // 5. เตรียม Payload ข้อมูลทั้งหมดเพื่อส่งไปที่ GAS
     const payload = {
         id: document.getElementById('inp-id')?.value,
         docDate: formattedDate,
@@ -386,7 +386,7 @@ async function handleFormSubmit(e) {
         emailRecipient: document.getElementById('inp-email')?.value,
         fileData, 
         fileName,
-        photoData: capturedImage, 
+        photoData: capturedImage, // ข้อมูลรูปภาพจากฟังก์ชัน processPhotoSelection
         sigData: sig
     };
 
@@ -422,7 +422,7 @@ async function submitWithdraw() {
 }
 
 /**
- * Management Actions (Logic: updateStatus, permanentlyDelete, saveAppSettings)
+ * Management Actions
  */
 async function updateDocStatus(rowNum, status) {
     const confirm = await Swal.fire({
@@ -471,7 +471,7 @@ async function saveAppSettings() {
     }
 }
 
-// --- Global Scope Exports (เพื่อให้ HTML เรียกใช้ผ่าน onclick/onchange ได้) ---
+// --- Global Scope Exports (เพื่อให้ไฟล์ HTML Template เรียกใช้ผ่าน onclick/onchange ได้) ---
 window.switchView = switchView;
 window.refreshData = refreshData;
 window.handleNavClick = (v) => { if(window.innerWidth < 768) toggleSidebar(); switchView(v); };
@@ -499,13 +499,13 @@ window.toggleOtherSubject = (val) => {
 };
 
 /**
- * ฟังก์ชันจัดการการเลือกรูปภาพ ( processPhotoSelection )
+ * ฟังก์ชันจัดการการเลือกรูปภาพ ( Preview และเก็บ Base64 )
  */
 window.processPhotoSelection = async (input) => {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = (e) => {
-            capturedImage = e.target.result; 
+            capturedImage = e.target.result; // บันทึกลงตัวแปร Global เพื่อใช้ตอน Submit
             const preview = document.getElementById('photo-preview-box');
             if(preview) {
                 preview.innerHTML = `<img src="${capturedImage}" class="h-full w-full object-cover">`;
@@ -517,7 +517,7 @@ window.processPhotoSelection = async (input) => {
 };
 
 /**
- * ฟังก์ชันล้างลายเซ็นหน้าฟอร์ม ( clearMainSignature )
+ * ฟังก์ชันล้างลายเซ็นหน้าฟอร์ม
  */
 window.clearMainSignature = () => {
     const sigInp = document.getElementById('inp-sig-data');
@@ -529,7 +529,7 @@ window.clearMainSignature = () => {
     if(mainSignaturePad) mainSignaturePad.clear();
 };
 
-// Utilities & Pagination
+// Utilities & Pagination Logic
 function renderPaginationUI(curr, total) {
     const info = document.getElementById('pagination-info');
     if (info) info.innerText = `แสดงหน้าที่ ${curr} จากทั้งหมด ${total} หน้า`;
