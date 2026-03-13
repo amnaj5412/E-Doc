@@ -132,7 +132,8 @@ async function refreshData() {
 }
 
 function applySettings() {
-    document.getElementById('side-logo').src = systemSettings.logoUrl;
+    const logo = document.getElementById('side-logo');
+    if(logo) logo.src = systemSettings.logoUrl;
     document.querySelectorAll('#side-title, #mob-title').forEach(el => el.innerText = systemSettings.companyName);
 }
 
@@ -160,6 +161,8 @@ function openModal(id, rowNum = null) {
         currentWithdrawRow = rowNum;
         if (!withdrawSignaturePad) withdrawSignaturePad = new SignaturePad(canvas);
         withdrawSignaturePad.clear();
+        const nameInp = document.getElementById('withdraw-name');
+        if(nameInp) nameInp.value = '';
     }
 }
 
@@ -170,6 +173,18 @@ function clearSignature(type) {
     if (type === 'withdraw' && withdrawSignaturePad) withdrawSignaturePad.clear();
 }
 
+function saveSignatureFromModal() {
+    if(mainSignaturePad.isEmpty()) { Swal.fire("คำเตือน", "กรุณาเซ็นชื่อก่อนกดยืนยัน", "warning"); return; }
+    const data = mainSignaturePad.toDataURL();
+    const sigInp = document.getElementById('inp-sig-data');
+    if(sigInp) sigInp.value = data;
+    const pImg = document.getElementById('sig-preview-img');
+    if(pImg) { pImg.src = data; pImg.classList.remove('hide'); }
+    const pPlace = document.getElementById('sig-placeholder');
+    if(pPlace) pPlace.classList.add('hide');
+    closeModal('sig-modal');
+}
+
 /**
  * Table Rendering
  */
@@ -177,42 +192,204 @@ function renderFilteredTable() {
     const tbody = document.getElementById('list-table');
     if (!tbody) return;
 
-    const search = (document.getElementById('filter-search')?.value || "").toLowerCase();
+    const search = (document.getElementById('filter-search')?.value || "").toLowerCase().trim();
     const year = document.getElementById('filter-year')?.value || "all";
 
-    let filtered = dataList.filter(d => currentMode === 'trash' ? d.status === 'deleted' : d.status === 'active');
-    if (year !== "all") filtered = filtered.filter(d => d.date?.includes(year));
-    if (search) filtered = filtered.filter(d => [d.id, d.title, d.sender, d.receiver].some(v => v?.toLowerCase().includes(search)));
+    let filtered = dataList.filter(item => {
+        const status = (item.status || "").toString().trim().toLowerCase();
+        return currentMode === 'trash' ? status === 'deleted' : status === 'active';
+    });
+
+    if (year !== "all") filtered = filtered.filter(d => (d.date || "").includes(year));
+    if (search) filtered = filtered.filter(d => [d.id, d.title, d.sender, d.receiver].some(v => (v||"").toString().toLowerCase().includes(search)));
 
     const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
     const items = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-    tbody.innerHTML = items.length ? items.map(item => `
-        <tr class="hover:bg-blue-50/40 border-b">
-            <td class="p-4"><div class="font-bold text-blue-600">${item.id}</div><div class="text-[10px] text-slate-400">${item.date}</div></td>
-            <td class="p-4 font-medium truncate max-w-[200px]">${item.title}</td>
-            <td class="p-4 text-[10px] text-slate-500">F: ${item.sender}<br>T: ${item.receiver}</td>
-            <td class="p-4 text-center flex justify-center gap-2">
-                <button onclick="showDetails(${item.rowNum})" class="p-2 bg-blue-50 text-blue-600 rounded-lg"><i data-lucide="eye" class="w-4 h-4"></i></button>
-            </td>
-        </tr>`).join('') : '<tr><td colspan="4" class="p-10 text-center text-slate-300 italic">ไม่มีข้อมูล</td></tr>';
+    if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-16 text-center text-slate-300 italic">ไม่มีข้อมูลที่แสดงผล</td></tr>';
+    } else {
+        tbody.innerHTML = items.map(item => {
+            const isWithdrawn = !!(item.withdrawStatus && item.withdrawStatus.includes("เบิกแล้ว"));
+            return `
+                <tr class="hover:bg-blue-50/40 border-b border-slate-50 transition-all">
+                    <td class="p-4"><div class="font-bold text-blue-600">${item.id}</div><div class="text-[10px] text-slate-400 font-medium">${item.date}</div></td>
+                    <td class="p-4 font-medium truncate max-w-[240px]" title="${item.title}">${item.title}</td>
+                    <td class="p-4 text-[10px] text-slate-500 leading-tight">
+                        <span class="text-slate-300 font-bold uppercase">From:</span> ${item.sender}<br>
+                        <span class="text-slate-300 font-bold uppercase">To:</span> ${item.receiver}
+                    </td>
+                    <td class="p-4 text-center">
+                        <div class="flex justify-center items-center gap-2">
+                             ${isWithdrawn ? `<div class="w-8 h-8 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center shadow-sm" title="เบิกแล้วโดย: ${item.withdrawName}"><i data-lucide="package-check" class="w-4 h-4"></i></div>` : ''}
+                            <button onclick="showDetails(${item.rowNum})" class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all"><i data-lucide="eye" class="w-4 h-4"></i></button>
+                            <button onclick="updateDocStatus(${item.rowNum}, '${item.status === 'deleted' ? 'active' : 'deleted'}')" class="p-2 bg-slate-50 text-slate-400 rounded-lg hover:bg-slate-700 hover:text-white transition-all"><i data-lucide="${item.status === 'deleted' ? 'refresh-cw' : 'trash-2'}" class="w-4 h-4"></i></button>
+                        </div>
+                    </td>
+                </tr>`;
+        }).join('');
+    }
     
     renderPaginationUI(currentPage, totalPages);
     lucide.createIcons();
 }
 
-// --- บังคับให้ Function อยู่ใน Global Scope เพื่อให้ HTML เรียกผ่าน onclick ได้ ---
+/**
+ * Detail Modal Logic
+ */
+function showDetails(rowNum) {
+    const item = dataList.find(d => d.rowNum === rowNum);
+    if(!item) return;
+
+    const isWithdrawn = !!(item.withdrawName && item.withdrawName.trim());
+    const getThumb = url => {
+        if(!url || url.indexOf('Error') !== -1) return null;
+        const match = url.match(/[-\w]{25,}/);
+        return match ? `https://drive.google.com/thumbnail?id=${match[0]}&sz=w800` : null;
+    }
+
+    const detailHtml = `
+        <div class="text-left text-sm space-y-4">
+            <div class="bg-slate-50 p-6 rounded-3xl space-y-3 border">
+                <div class="flex justify-between border-b pb-2"><span class="text-slate-400 font-bold text-[10px] uppercase tracking-wide">เรื่องเอกสาร</span><span class="font-bold text-right ml-4">${item.title}</span></div>
+                <div class="flex justify-between border-b pb-2"><span class="text-slate-400 font-bold text-[10px] uppercase tracking-wide">ต้นทาง/ปลายทาง</span><span>${item.sender} &rarr; ${item.receiver}</span></div>
+                <div class="flex justify-between"><span class="text-slate-400 font-bold text-[10px] uppercase tracking-wide">วันที่เอกสาร</span><span>${item.date}</span></div>
+            </div>
+            ${isWithdrawn ? `
+                <div class="p-4 bg-orange-50 border border-orange-200 rounded-3xl">
+                    <p class="text-[10px] font-bold text-orange-600 mb-2 uppercase tracking-widest flex items-center"><i data-lucide="info" class="w-3 h-3 mr-1"></i> ข้อมูลการเบิก</p>
+                    <p class="font-bold text-orange-800">ผู้เบิก: ${item.withdrawName}</p>
+                    <div class="bg-white mt-3 p-3 rounded-2xl border border-orange-100 shadow-inner flex justify-center">
+                        ${getThumb(item.withdrawSig) ? `<img src="${getThumb(item.withdrawSig)}" class="h-16">` : '<span class="text-slate-300 italic text-xs">ไม่มีลายเซ็น</span>'}
+                    </div>
+                </div>
+            ` : ''}
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 mb-1 uppercase text-center">รูปถ่าย</p>
+                    ${getThumb(item.photoUrl) ? `<img src="${getThumb(item.photoUrl)}" class="h-32 w-full object-cover rounded-2xl border cursor-pointer" onclick="window.open('${item.photoUrl}')">` : '<div class="h-32 bg-slate-100 rounded-2xl flex items-center justify-center"><i data-lucide="image" class="text-slate-200"></i></div>'}
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 mb-1 uppercase text-center">ลายเซ็นรับเข้า</p>
+                    <div class="h-32 bg-white rounded-2xl border flex items-center justify-center p-2">
+                        ${getThumb(item.sigUrl) ? `<img src="${getThumb(item.sigUrl)}" class="max-h-full max-w-full">` : '<span class="text-slate-200 italic text-[10px]">ไม่พบ</span>'}
+                    </div>
+                </div>
+            </div>
+            ${item.fileUrl && !item.fileUrl.includes('Error') ? `<a href="${item.fileUrl}" target="_blank" class="block py-4 bg-blue-50 text-blue-600 text-center rounded-2xl font-bold hover:bg-blue-100 transition-all">เปิดไฟล์ PDF ต้นฉบับ</a>` : ''}
+            ${(!isWithdrawn && item.status === 'active' && item.id.includes('IN')) ? `<button onclick="openModal('withdraw-modal', ${item.rowNum})" class="w-full py-5 bg-orange-500 text-white rounded-2xl font-bold shadow-lg hover:bg-orange-600 transition-all flex items-center justify-center"><i data-lucide="hand-helping" class="w-5 h-5 mr-2"></i> ทำรายการเบิกเอกสาร</button>` : ''}
+        </div>
+    `;
+
+    Swal.fire({
+        title: `<span class="text-blue-600 font-bold">${item.id}</span>`,
+        html: detailHtml,
+        width: '600px',
+        confirmButtonText: 'ปิดหน้าต่าง',
+        confirmButtonColor: '#3b82f6',
+        didOpen: () => lucide.createIcons()
+    });
+}
+
+/**
+ * Form Submission Logic
+ */
+async function handleFormSubmit(e) {
+    e.preventDefault();
+    const sig = document.getElementById('inp-sig-data')?.value;
+    if(!sig) { Swal.fire("คำเตือน", "กรุณาลงลายมือชื่อยืนยันการทำรายการ", "warning"); return; }
+
+    loading(true, 'กำลังบันทึกข้อมูลลง Google Sheets...');
+    
+    const selVal = document.getElementById('sel-subject')?.value;
+    const otherSubject = document.getElementById('inp-subject-other')?.value;
+    const finalTitle = selVal === 'OTHER' ? otherSubject : selVal;
+    
+    const dVal = document.getElementById('inp-date')?.value.split('-');
+    const formattedDate = `${dVal[2]}/${dVal[1]}/${parseInt(dVal[0])+543}`;
+
+    const fileEl = document.getElementById('inp-file');
+    let fileData = null, fileName = "";
+    if (fileEl?.files[0]) {
+        fileData = await fileToBase64(fileEl.files[0]);
+        fileName = fileEl.files[0].name;
+    }
+
+    const payload = {
+        id: document.getElementById('inp-id')?.value,
+        docDate: formattedDate,
+        title: finalTitle,
+        sender: document.getElementById('inp-sender')?.value,
+        receiver: document.getElementById('inp-receiver')?.value,
+        emailRecipient: document.getElementById('inp-email')?.value,
+        fileData, fileName,
+        photoData: capturedImage,
+        sigData: sig
+    };
+
+    const res = await callGAS("processSubmission", { payload });
+    loading(false);
+    if(res && res.success) {
+        Swal.fire("สำเร็จ", "บันทึกข้อมูลเอกสารเรียบร้อยแล้ว", "success").then(() => {
+            switchView('dashboard');
+            refreshData();
+        });
+    } else {
+        Swal.fire("Error", res ? res.message : "การบันทึกล้มเหลว", "error");
+    }
+}
+
+async function submitWithdraw() {
+    const name = document.getElementById('withdraw-name')?.value;
+    if(!name || name.trim() === "") { Swal.fire("คำเตือน", "กรุณาระบุชื่อผู้เบิกเอกสาร", "warning"); return; }
+    if(withdrawSignaturePad.isEmpty()) { Swal.fire("คำเตือน", "กรุณาลงลายมือชื่อผู้เบิก", "warning"); return; }
+
+    loading(true, 'กำลังบันทึกข้อมูลการเบิก...');
+    const payload = { rowNum: currentWithdrawRow, withdrawName: name, withdrawSig: withdrawSignaturePad.toDataURL() };
+    const res = await callGAS("recordWithdrawal", { payload });
+    loading(false);
+    if(res && res.success) {
+        closeModal('withdraw-modal');
+        Swal.fire("สำเร็จ", "บันทึกการเบิกเรียบร้อยแล้ว", "success").then(refreshData);
+    }
+}
+
+async function updateDocStatus(rowNum, status) {
+    const confirm = await Swal.fire({
+        title: status === 'deleted' ? 'ย้ายลงถังขยะ?' : 'กู้คืนเอกสาร?',
+        icon: 'warning', showCancelButton: true, confirmButtonText: 'ยืนยัน', cancelButtonText: 'ยกเลิก'
+    });
+    if(!confirm.isConfirmed) return;
+
+    loading(true, 'กำลังปรับปรุงสถานะ...');
+    await callGAS("updateStatus", { rowNum, status });
+    await refreshData();
+    loading(false);
+}
+
+// --- บังคับให้ Function อยู่ใน Global Scope ---
 window.switchView = switchView;
 window.refreshData = refreshData;
 window.handleNavClick = (v) => { if(window.innerWidth < 768) toggleSidebar(); switchView(v); };
 window.openModal = openModal;
 window.closeModal = closeModal;
 window.clearSignature = clearSignature;
+window.saveSignatureFromModal = saveSignatureFromModal;
 window.resetAndRender = () => { currentPage = 1; renderFilteredTable(); };
-window.showDetails = (rowNum) => { /* โค้ด showDetails เดิมของคุณ */ console.log("Show details for row", rowNum); };
+window.showDetails = showDetails;
+window.submitWithdraw = submitWithdraw;
+window.updateDocStatus = updateDocStatus;
+window.handleFormSubmit = handleFormSubmit;
 window.toggleSidebar = () => {
     document.getElementById('main-sidebar').classList.toggle('-translate-x-full');
     document.getElementById('sidebar-overlay').classList.toggle('hidden');
+};
+window.toggleOtherSubject = (val) => {
+    const otherInp = document.getElementById('inp-subject-other');
+    if(otherInp) {
+        if(val === 'OTHER') { otherInp.classList.remove('hide'); otherInp.required = true; }
+        else { otherInp.classList.add('hide'); otherInp.required = false; otherInp.value = ''; }
+    }
 };
 
 // Utilities
@@ -224,11 +401,36 @@ function loading(show, text) {
 
 function renderPaginationUI(curr, total) {
     const info = document.getElementById('pagination-info');
-    if (info) info.innerText = `หน้าที่ ${curr} / ${total}`;
+    if (info) info.innerText = `แสดงหน้าที่ ${curr} จากทั้งหมด ${total} หน้า`;
 }
 
-function updateStatsDisplay() { /* Logic นับเลข In/Out */ }
-function populateYearFilter() { /* Logic สร้าง Option ปี */ }
+function updateStatsDisplay() { 
+    const counts = {
+        in: dataList.filter(d => (d.status || "").toLowerCase() === 'active' && (d.id || "").startsWith('IN')).length,
+        out: dataList.filter(d => (d.status || "").toLowerCase() === 'active' && (d.id || "").startsWith('OUT')).length,
+        del: dataList.filter(d => (d.status || "").toLowerCase() === 'deleted').length
+    };
+    const sIn = document.getElementById('stat-in'), sOut = document.getElementById('stat-out'), sDel = document.getElementById('stat-del');
+    if(sIn) sIn.innerText = counts.in;
+    if(sOut) sOut.innerText = counts.out;
+    if(sDel) sDel.innerText = counts.del;
+}
+
+function populateYearFilter() { 
+    const filterYear = document.getElementById('filter-year');
+    if(!filterYear) return;
+    const years = [...new Set(dataList.map(d => (d.date || "").split('/')[2]))].filter(Boolean).sort((a,b)=>b-a);
+    filterYear.innerHTML = '<option value="all">ปี พ.ศ. ทั้งหมด</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
+}
+
+function fileToBase64(f) { 
+    return new Promise((r, j) => { 
+        const rd = new FileReader(); 
+        rd.readAsDataURL(f); 
+        rd.onload = () => r(rd.result); 
+        rd.onerror = e => j(e); 
+    }); 
+}
 
 // Initialize Application
 window.onload = () => {
